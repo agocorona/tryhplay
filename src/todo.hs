@@ -13,20 +13,17 @@ import Control.Monad.IO.Class
 import qualified Data.IntMap as M
 import Data.Monoid
 import Data.Maybe
+import Haste.Serialize
+import Haste.JSON (JSON(..))
 
-
-main= do
---   hs <- elemsByTagName "head"
-
---   build (link ! atr "rel" "stylesheet"
---               ! href "bower_components/todomvc-common/base.css")  $ Prelude.head hs
-
-   withElem "idelem" .  runWidget $ todo
+main= withElem "todo-body" $ runWidget todo
 
 data Status= Completed | Active deriving (Typeable, Show,Eq,Read)
 type Tasks = M.IntMap  (String,Status)
 
-data TaskAction =  Done | Destroy
+instance Serialize Status where
+  toJSON= Str . toJSString . show
+  parseJSON (Str jss)=  return . read  $ fromJSStr jss
 
 data PresentationMode= Mode String deriving Typeable
 
@@ -34,62 +31,57 @@ all= ""
 active= "active"
 completed= "completed"
 
-
-
 todo ::  Widget ()
 todo = do
       section ! id "todoapp" $ do
-          nelem "header" ! id "header"
-          section ! id "main" $ do
-            ul ! id "todo-list"  $ noHtml
-          footer ! id "footer"  $ do
-            span ! id "todo-count" $ noHtml
-            ul ! id "filters" $ noHtml
-            span ! id "clear-holder" $ noHtml
-      footer ! id "info" $ do
-            p "Double-click to edit a todo"
-            p $ do
-               toElem "Created by "
-               a ! href "http://twitter.com/agocorona" $ "Alberto G. Corona"
-               p $ do
-                  toElem "Part of "
-                  a ! href "http://todomvc.com" $ "TodoMVC"
-     ++> header
-      *> toggleAll
-      *> filters all
-      *> numActive
-      *> clearCompleted
+        nelem "header" ! id "header"
+        section ! id "main" $ do
+          ul ! id "todo-list"  $ noHtml
 
+        footer ! id "footer"  $ do
+          span ! id "todo-count" $ noHtml
+          ul ! id "filters" $ noHtml
+          span ! id "clear-holder" $ noHtml
+
+      footer ! id "info" $ do
+        p "Double-click to edit a todo"
+        p $ do
+           toElem "Created by "
+           a ! href "http://twitter.com/agocorona" $ "Alberto G. Corona"
+           p $ do
+              toElem "Part of "
+              a ! href "http://todomvc.com" $ "TodoMVC"
+
+     ++> header                       --             ++> add HTML to a widget
+     **> toggleAll
+     **> filters all
+     **> itemsLeft
+     **> showClearCompleted           --             **> is the *> applicative operator
  where
 
- numActive= at "todo-count" Insert $ do
-    n <- getTasks >>= return . M.size . M.filter ((==) Active . snd)
+ itemsLeft= at "todo-count" Insert $ do
+    n <- getTasks >>= return . M.size . M.filter ((==) Active . snd) . fst
     wraw $ case n of
       1 -> do
                 strong "1"
                 toElem " item left"
-      n -> do
+      _ -> do
                 strong (show n)
                 toElem " items left"
 
- clearCompleted= at "clear-holder" Insert $ do
-    tasks <- getTasks
+ showClearCompleted= at "clear-holder" Insert $ do
+    (tasks,_) <- getTasks
     let n =  M.size . M.filter ((==) Completed . snd)   $ tasks
     when (n >0) $ do
-        resetEventData
         (button ! id "clear-completed" $ "Clear completed") `pass` OnClick
-
         setTasks $ M.filter ((==) Active . snd) tasks
         displayFiltered
-
-
 
  filters op =at "filters" Insert $ filters' op
 
     where
     filters' op= (links op `wake` OnClick)
       `wcallback` (\op' -> do
-        liftIO $ print op'
         setSData $ Mode op'
         displayFiltered **> return ()
         filters' op')
@@ -108,19 +100,19 @@ todo = do
     let newst=  case t of
             [] ->  Active
             _  ->  Completed
-    tasks <- getTasks
+    (tasks,_) <- getTasks
     filtered  <- getFiltered tasks
     let filtered' = M.map (\(t,_) -> (t,newst)) filtered
         tasks'    = M.union filtered' tasks
     setTasks tasks'
     displayFiltered
-    numActive
+    itemsLeft
 
- displayFiltered = (do
-    tasks <- getTasks
+ displayFiltered = do
+    (tasks,_) <- getTasks
     filtered <- getFiltered tasks
-    at "todo-list" Insert $ foldl (<|>) empty $ reverse
-      [display  tasks t  | t <- M.assocs filtered])
+    at "todo-list" Insert $ foldl (<|>) mempty $ reverse
+      [display  i | i <- M.keys filtered]
    **> return ()
 
  getFiltered tasks= do
@@ -145,56 +137,80 @@ todo = do
       EventData evname evdata <- getEventData
       when( evdata == Key 13) $ do
          entry .= ""
-         tasks <- getTasks
-         let i= M.size tasks
-             tasks'= M.insert  i (task,Active) tasks
-         setTasks tasks'
-         numActive
+         idtask <- addTask task Active
          Mode m <- getSData <|> return (Mode all)
-         when (m /= completed) $ at "todo-list" Prepend $ display tasks' (i,(task,Active))
-         return ()
+         when (m /= completed) $ at "todo-list" Prepend $ display idtask
 
 
- display tasks (i,(task,st)) =
-   (li <<< ( do
-    let checked= case st of Completed -> True; Active -> False
-    CheckBoxes ch <- setCheckBox checked "check" `wake` OnClick ! atr "class" "toggle"
-    case ch of
-        ["check"] -> changeState tasks i Completed task >> viewEdit Completed task
-        _         -> changeState tasks i Active task    >> viewEdit Active task
-
-
-
-   <** do CheckBoxes r <- setCheckBox False "destroy" `wake` OnClick  ! atr "class" "destroy"
-          continueIf (not $ null r) ()))
-  `wcallback` (const $ setTasks $ M.delete i tasks)
+ display idtask =
+   (li <<< ( toggleActive  **> destroy)) `wcallback` const (delTask idtask)
 
    where
-   changeState tasks i stat task= do
-        setTasks $ M.insert  i (task,stat) tasks
-        clearCompleted
+   toggleActive = do
+        Just (task,st) <- getTask idtask
+        let checked= case st of Completed -> True; Active -> False
+        CheckBoxes ch <- setCheckBox checked "check" `wake` OnClick ! atr "class" "toggle"
+        case ch of
+          ["check"] -> changeState  idtask Completed task
+          _         -> changeState  idtask Active task
 
-   viewEdit st task = do
-     let lab= case st of
-            Completed  -> label ! atr "class" "completed"
-            Active     -> label
+   destroy= (button ! atr "class" "destroy" $ noHtml) `pass` OnClick
 
-     lab  task `pass` OnDblClick
+   changeState  i stat task=
+          insertTask i task stat
+      **> itemsLeft
+      **> showClearCompleted
+      **> viewEdit i stat task
 
-    `wcallback` const (do
+   viewEdit idtask st task = do
+        let lab= case st of
+                 Completed  -> label ! atr "class" "completed"
+                 Active     -> label
+
+        lab  task `pass` OnDblClick
+
+     `wcallback` const (do
             ntask <-  inputString (Just task) `wake` OnKeyUp ! atr "class" "edit"
             EventData _ (Key k) <- getEventData
             continueIf (k== 13) ntask
 
-       `wcallback` viewEdit st)
+       `wcallback` (\ntask -> do
+            insertTask idtask ntask st
+            viewEdit idtask st ntask))
 
 
 
-getTasks= ((liftIO $ getItem "tasks") >>= \r ->
-                 case r of
-                     Right s -> return (read s)
-                     Left s  -> empty)
-           <|> return (M.empty) :: Widget Tasks
+
+getTasks :: MonadIO m  => m (Tasks, Int)
+getTasks= liftIO $ do
+    mt <- getItem "tasks"
+    case mt of
+      Left _ ->   setItem "tasks" (M.toList (M.empty :: Tasks),0 ::Int) >> getTasks
+      Right (ts,n) -> return (M.fromList ts, n)
+
+getTask i= liftIO $ do
+     (tasks,id) <- getTasks
+     return $ M.lookup i tasks
+
 
 setTasks :: MonadIO m => Tasks -> m ()
-setTasks =  liftIO . setItem "tasks" . show
+setTasks tasks=  liftIO $ do
+      (_,n) <- getTasks
+      setItem "tasks" (M.toList tasks,n)
+
+addTask :: String -> Status -> Widget Int
+addTask task state= liftIO $ do
+     (tasks,id) <- getTasks
+     let tasks'= M.insert id  (task, state) tasks
+     setItem "tasks" (M.toList tasks', id+1)
+     return id
+
+insertTask id task state= liftIO $ do
+     (tasks,i) <- getTasks
+     let tasks'= M.insert  id (task,state) tasks
+     setItem "tasks" (M.toList tasks', i)
+     return tasks'
+
+delTask i= liftIO $ do
+   (tasks,_) <- getTasks
+   setTasks $ M.delete i tasks
