@@ -1,7 +1,7 @@
 hp-todo
 =======
 
-the todoMVC application using the hplayground client framework.
+the [todoMVC](todomvc.com) application using the hplayground client framework.
 
 Status
 ------
