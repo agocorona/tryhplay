@@ -4,7 +4,6 @@ import Haste.HPlay.Cell
 import Haste.Perch
 import Haste
 import Haste.LocalStorage
-import Haste.DOM
 import Control.Applicative
 import Prelude hiding (div,span,id,all)
 import Data.Typeable
@@ -12,13 +11,13 @@ import Control.Monad(when)
 import Control.Monad.IO.Class
 import qualified Data.IntMap as M
 import Data.Monoid
-import Data.Maybe
 import Haste.Serialize
 import Haste.JSON (JSON(..))
 
-main= withElem "todo-body" $ runWidget todo
 
-data Status= Completed | Active deriving (Typeable, Show,Eq,Read)
+
+data Status= Completed | Active deriving (Show,Eq,Read)
+
 type Tasks = M.IntMap  (String,Status)
 
 instance Serialize Status where
@@ -30,6 +29,10 @@ data PresentationMode= Mode String deriving Typeable
 all= ""
 active= "active"
 completed= "completed"
+
+main= do
+  addHeader $ link ! atr "rel" "stylesheet" ! href "base.css"
+  runBody todo
 
 todo ::  Widget ()
 todo = do
@@ -57,6 +60,7 @@ todo = do
      **> filters all
      **> itemsLeft
      **> showClearCompleted           --             **> is the *> applicative operator
+
  where
 
  itemsLeft= at "todo-count" Insert $ do
@@ -87,8 +91,8 @@ todo = do
         filters' op')
 
     links op=
-        li ! clas op all       <<< wlink all  (toElem "All")    <|>
-        li ! clas op active    <<< wlink active  (toElem "Active")  <|>
+        li ! clas op all       <<< wlink all        (toElem "All")     <|>
+        li ! clas op active    <<< wlink active     (toElem "Active")  <|>
         li ! clas op completed <<< wlink completed  (toElem "Completed")
 
     clas current op= atr "class" $ if current== op then "selected" else "unsel"
@@ -96,7 +100,7 @@ todo = do
  header = at "header" Insert $ h1 "todos" ++> newTodo
 
  toggleAll = at "main" Prepend $ do
-    CheckBoxes t <- setCheckBox False "toggle" `wake` OnClick ! atr "class" "toggle-all"
+    t <- getCheckBoxes $ setCheckBox False "toggle" `wake` OnClick ! atr "class" "toggle-all"
     let newst=  case t of
             [] ->  Active
             _  ->  Completed
@@ -140,7 +144,7 @@ todo = do
          idtask <- addTask task Active
          Mode m <- getSData <|> return (Mode all)
          when (m /= completed) $ at "todo-list" Prepend $ display idtask
-
+         itemsLeft
 
  display idtask =
    (li <<< ( toggleActive  **> destroy)) `wcallback` const (delTask idtask)
@@ -149,7 +153,7 @@ todo = do
    toggleActive = do
         Just (task,st) <- getTask idtask
         let checked= case st of Completed -> True; Active -> False
-        CheckBoxes ch <- setCheckBox checked "check" `wake` OnClick ! atr "class" "toggle"
+        ch <- getCheckBoxes $ setCheckBox checked "check" `wake` OnClick ! atr "class" "toggle"
         case ch of
           ["check"] -> changeState  idtask Completed task
           _         -> changeState  idtask Active task
@@ -178,8 +182,7 @@ todo = do
             insertTask idtask ntask st
             viewEdit idtask st ntask))
 
-
-
+-- Model, using LocalStorage
 
 getTasks :: MonadIO m  => m (Tasks, Int)
 getTasks= liftIO $ do
@@ -191,7 +194,6 @@ getTasks= liftIO $ do
 getTask i= liftIO $ do
      (tasks,id) <- getTasks
      return $ M.lookup i tasks
-
 
 setTasks :: MonadIO m => Tasks -> m ()
 setTasks tasks=  liftIO $ do
