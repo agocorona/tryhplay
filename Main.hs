@@ -2,7 +2,7 @@
 module Main where
 
 import MFlow.Wai.Blaze.Html.All
---import Haste.Compiler
+import Haste.Compiler
 import Data.Default
 import Prelude hiding (id,div,head)
 import qualified Data.Text as T
@@ -14,7 +14,6 @@ import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
-
 
 projects= "./examples/"
 
@@ -30,7 +29,7 @@ main= do
   setFilesPath projects
 
   runNavigation "tryplay" . transientNav $ do
-    let trynumber= 1
+    let trynumber= 0
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
@@ -48,12 +47,12 @@ main= do
                         <** submitButton "send"
                         <++ br)
           let haskell=  T.unpack r
---          r <- p <<< do liftIO $ compile def "./" $ InString haskell
+          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
---          out <- case r of
---              Failure errs -> fromStr errs ++> empty
---              Success (OutString out) -> return out
-          let out= "hello"
+          out <- case r of
+              Failure errs -> fromStr errs ++> empty
+              Success (OutString out) -> return out
+
           p <<< submitButton  "execute"
           let jsfile = show trynumber ++ ".js"
           liftIO $ writeFile  (projects ++ jsfile) out
