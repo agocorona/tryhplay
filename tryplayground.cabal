@@ -19,7 +19,7 @@ executable tryplayground
   main-is:             Main.hs
   -- other-modules:       
   -- other-extensions:    
-  build-depends:       base >= 0.1 && <4.7, MFlow, data-default
+  build-depends:       base , MFlow, data-default
                       ,directory , TCache, text, haste-compiler
                       ,bytestring, blaze-html
   -- hs-source-dirs:      
