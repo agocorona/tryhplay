@@ -1,1 +1,1 @@
-web: ./dist/build/tryplayground/tryplayground.exe
+web: ./dist/build/tryplayground/tryplayground
