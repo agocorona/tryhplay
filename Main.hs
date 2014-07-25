@@ -9,11 +9,14 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.String
 import Data.TCache.DefaultPersistence
+import Data.TCache.IndexText
+
 import System.Directory
 import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
+import qualified Data.Text.Lazy as TL
 
 projects= "./examples/"
 
@@ -23,13 +26,16 @@ instance Serializable Examples where
   serialize = B.pack . show
   deserialize =  read . B.unpack
 
+listExamples (Examples list)= list
+
 main= do
+  indexList listExamples (map TL.pack )
   examples <- atomically $ newDBRef $ Examples ["example.hs"]
 
   setFilesPath projects
 
   runNavigation "tryplay" . transientNav $ do
-    let trynumber= 0
+    let trynumber= 3
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
@@ -53,24 +59,29 @@ main= do
               Failure errs -> fromStr errs ++> empty
               Success (OutString out) -> return out
 
-          p <<< submitButton  "execute"
+--          p <<< submitButton  "execute"
           let jsfile = show trynumber ++ ".js"
           liftIO $ writeFile  (projects ++ jsfile) out
           return (jsfile,haskell)
 
     setHeader $ \w ->  docTypeHtml $ do
-           head $ script ! type_ "text/javascript" ! src (fromString $ js) $ fromStr ""
+           head $ script ! type_ "text/javascript" ! src (fromString $ "/"++ js) $ fromStr ""
            body $ do
              div ! At.style "background:gray" ! id "idelem" $ fromStr ""
              w
 
-    name <- page $  wform $
-               getString Nothing <! [("placeholder","program name")]
-               <** submitButton "send"
+    page $ wform $
+               (getString Nothing <! [("placeholder","give a program name to save")])
 
+                `validate` (\name -> do
 
-    liftIO $ do
-       writeFile  (projects ++name) hs
-       renameFile (projects ++js) $ projects ++ name++ ".js"
-       atomically $ writeDBRef examples $ Examples $ name:exampleList
+                  list <- liftIO $ atomically $ listExamples `containsElem`  name
+                  if null list
+                       then liftIO $ do
+                           writeFile  (projects ++name) hs
+                           renameFile (projects ++js) $ projects ++ name++ ".js"
+                           atomically $ writeDBRef examples $ Examples $ name:exampleList
+                           return Nothing
+                       else return $ Just "name already used")
 
+               **> submitButton "send" **> return  ()
