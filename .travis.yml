@@ -1,8 +1,9 @@
 language: haskell
-before_install:  cabal install monadloc-pp
+before_install: cabal install monadloc-pp
 deploy:
   provider: heroku
-
-  api_key: "f0a47850-7f86-4f59-872d-8c9c85153d71"
-  
-  app: tryplay
+  api_key:
+    secure: k0a86PCOY9zQcDQpTqEiAx+1oygimRgtTzV1iQpCl6MCdnFdiijhn3tqljtYCuE3+YxZp/Q2t3zK+ugRZgJ/MHU76NgcVutpPNzHlc3k0iGSKrDcRJf1G2d1JCGT7bHFHa6stsER5hjecNU81w18fOejXQPKZebmD/1sq4axyZ8=
+  app: tryhplay
+  on:
+    repo: agocorona/tryhplay
