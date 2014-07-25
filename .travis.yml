@@ -6,3 +6,4 @@ deploy:
   api_key: "f0a47850-7f86-4f59-872d-8c9c85153d71"
   
   app: tryplay
+  strategy: git
