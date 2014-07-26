@@ -3,6 +3,8 @@ hp-todo
 
 the [todoMVC](todomvc.com) application using the hplayground client framework.
 
+[See it working](http://mflowdemo.herokuapp.com/todo.html)
+
 Status
 ------
 A few things remaining.
