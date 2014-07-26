@@ -1,1 +1,1 @@
-web: bin/tryplayground
+web: ./dist/build/tryplayground/tryplayground
