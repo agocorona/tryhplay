@@ -73,7 +73,7 @@ main= do
     page $ wform $
                (getString Nothing <! [("placeholder","give a program name to save")])
 
-                `validate` (\name -> do
+                `validate` (\name ->  do
 
                   list <- liftIO $ atomically $ listExamples `containsElem`  name
                   if null list
