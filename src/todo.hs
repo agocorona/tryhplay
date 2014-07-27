@@ -65,13 +65,8 @@ todo = do
 
  itemsLeft= at "todo-count" Insert $ do
     n <- getTasks >>= return . M.size . M.filter ((==) Active . snd) . fst
-    wraw $ case n of
-      1 -> do
-                strong "1"
-                toElem " item left"
-      _ -> do
-                strong (show n)
-                toElem " items left"
+    wraw $ do strong (show n)
+              toElem $ case n of 1 -> " item left"  _ -> " items left"
 
  showClearCompleted= at "clear-holder" Insert $ do
     (tasks,_) <- getTasks
