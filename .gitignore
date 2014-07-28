@@ -2,6 +2,7 @@ Demos/old-trash
 Test
 errlog
 .tcachedata
+.anvil
 .cabal-sandbox
 cabal.sandbox
 favicon
