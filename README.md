@@ -1,4 +1,4 @@
 tryhplay
 ========
 
-Compile and run hplayground programs
+Compile and run hplayground programs.
