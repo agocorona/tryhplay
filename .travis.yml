@@ -2,6 +2,6 @@ language: haskell
 before_install: cabal install monadloc-pp
 deploy:
   provider: heroku
-  buildpack: https://github.com/agocorona/heroku-buildpack-haskell.git
+  strategy: git
   api_key: "f0a47850-7f86-4f59-872d-8c9c85153d71"
-  app: tryplay
+  app: tryhplay
