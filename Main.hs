@@ -24,7 +24,7 @@ data Examples= Examples [String] deriving (Read,Show,Typeable)
 instance Indexable Examples where key = const "examples"
 instance Serializable Examples where
   serialize = B.pack . show
-  deserialize =  read . B.unpack
+  deserialize = read . B.unpack
 
 listExamples (Examples list)= list
 
@@ -34,7 +34,7 @@ main= do
 
   setFilesPath projects
 
-  runNavigation "tryplay" . transientNav $ do
+  runNavigation "try" . transientNav $ do
     let trynumber= 3
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
