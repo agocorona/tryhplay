@@ -18,6 +18,10 @@ import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
 import qualified Data.Text.Lazy as TL
 
+import Debug.Trace
+
+(!>)= flip trace
+
 projects= "./examples/"
 
 data Examples= Examples [String] deriving (Read,Show,Typeable)
@@ -39,9 +43,8 @@ main= do
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
+
     (js,hs) <- page $   pageFlow "input" $ do
-
-
           example <- b  "you can load also one of these examples "
                      ++> firstOf[wlink e << e <++ " " | e <- exampleList]
                      <|> return "none"
@@ -56,8 +59,8 @@ main= do
           r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
           out <- case r of
-              Failure errs -> fromStr errs ++> empty
-              Success (OutString out) -> return out
+              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
+              Success (OutString out) -> return out  !>  "*******SUCCESS"
 
 --          p <<< submitButton  "execute"
           let jsfile = show trynumber ++ ".js"
