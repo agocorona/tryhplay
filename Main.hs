@@ -35,8 +35,8 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main = runNavigation "tra" . transientNav . page $ do
-       r <- liftIO $ shell $ inDirectory "examples"  $ genericRun "~/.cabal/bin/hastec" ["example.hs"] ""
-       b  << (show r) ++> empty
+      r <- liftIO $ shell $  genericRun ".cabal/bin/hastec" ["examples/example.hs"] ""
+      b  << (show r) ++> empty
 
 main1= do
   indexList listExamples (map TL.pack )
