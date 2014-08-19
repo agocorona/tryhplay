@@ -34,11 +34,11 @@ instance Serializable Examples where
 
 listExamples (Examples list)= list
 
-main2 = runNavigation "tra" . transientNav . page $ do
-      r <- liftIO $ shell $  genericRun ".cabal/bin/hastec" ["examples/example.hs"] ""
+main = runNavigation "tra" . transientNav . page $ do
+      r <- liftIO $ shell $  genericRun "haste-compiler/hastec" ["examples/example.hs"] ""
       b  << (show r) ++> empty
 
-main= do
+main1= do
   indexList listExamples (map TL.pack )
   examples <- atomically $ newDBRef $ Examples ["example.hs"]
 
