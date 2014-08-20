@@ -5,6 +5,7 @@ import MFlow.Wai.Blaze.Html.All
 import Haste.Compiler
 import Data.Default
 import Prelude hiding (id,div,head)
+import qualified Data.List as L(head)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.String
@@ -35,7 +36,9 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main = runNavigation "tra" . transientNav . page $ do
-      r <- liftIO $ shell $  genericRun "haste-compiler/hastec" ["examples/example.hs"] ""
+      command <- getString Nothing
+      let args= words command
+      r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show r) ++> empty
 
 main1= do
