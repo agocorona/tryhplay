@@ -1,5 +1,5 @@
-#language: haskell
-#before_install: cabal install monadloc-pp
+language: haskell
+before_install: cabal install monadloc-pp
 deploy:
   provider: heroku 
   buildpack: https://github.com/agocorona/buildpack2.git
