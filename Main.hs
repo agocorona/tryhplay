@@ -36,10 +36,11 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","100")]
+      command <- getString Nothing <! [("width","110")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
-      b  << (show r) ++> empty
+      b  << (show  r) ++> empty
+
 
 main1= do
   indexList listExamples (map TL.pack )
