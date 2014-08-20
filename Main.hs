@@ -25,7 +25,7 @@ import Debug.Trace
 
 (!>)= flip trace
 
-projects= "./examples//"
+projects= "./examples/"
 
 data Examples= Examples [String] deriving (Read,Show,Typeable)
 instance Indexable Examples where key = const "examples"
@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing
+      command <- getString Nothing <! [("width","100")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show r) ++> empty
