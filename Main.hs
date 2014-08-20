@@ -25,7 +25,7 @@ import Debug.Trace
 
 (!>)= flip trace
 
-projects= "./examples/"
+projects= "./examples//"
 
 data Examples= Examples [String] deriving (Read,Show,Typeable)
 instance Indexable Examples where key = const "examples"
