@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","130")]
+      command <- getString Nothing <! [("width","140")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
@@ -80,7 +80,7 @@ main= do
                   case err of
                       "" -> (a  ! href  (fromString(projects++ show trynumber++".html")) $ "execute") ++> empty
                       errs -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
-          
+
 --          p <<< submitButton  "execute"
 ----          let jsfile = show trynumber ++ ".js"
 ----          liftIO $ writeFile  (projects ++ jsfile) out
