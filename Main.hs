@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","140")]
+      command <- getString Nothing <! [("width","150")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
@@ -48,7 +48,7 @@ main= do
 
   setFilesPath projects
 
-  runNavigation "try" . transientNav $ do
+  runNavigation "try" . transientNav $ dohas
     let trynumber= 3
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
