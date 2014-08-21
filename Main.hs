@@ -48,7 +48,7 @@ main= do
 
   setFilesPath projects
 
-  runNavigation "try" . transientNav $ dohas
+  runNavigation "try" . transientNav $ do
     let trynumber= 3
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
