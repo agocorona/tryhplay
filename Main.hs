@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","150")]
+      command <- getString Nothing <! [("width","130")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
@@ -66,32 +66,41 @@ main= do
                         <** submitButton "send"
                         <++ br)
           let haskell=  T.unpack r
-          r <- p <<< do liftIO $ compile def "./" $ InString haskell
+              hsfile = show trynumber ++ ".hs"
+          liftIO $ writeFile  (projects ++ hsfile) haskell
+          r <- p <<< do liftIO . shell $  genericRun "/app/haste-compiler-0.3/haste-compiler/hastec" [hsfile] "--output-html"
+--          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
-          out <- case r of
-              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
-              Success (OutString out) -> return out  !>  "*******SUCCESS"
+--          out <- case r of
+--              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
+--              Success (OutString out) -> return out  !>  "*******SUCCESS"
+          case r of
+            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found "++  errs)
+            Right (b,out,err) ->
+                  case err of
+                      "" -> return ()
+                      errs -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
+          (a  ! href (projects++ show trynumber++".html") $ "execute") ++> empty
+--          p <<< submitButton  "execute"
+----          let jsfile = show trynumber ++ ".js"
+----          liftIO $ writeFile  (projects ++ jsfile) out
+--          return (jsfile,haskell)
 
-          p <<< submitButton  "execute"
-          let jsfile = show trynumber ++ ".js"
-          liftIO $ writeFile  (projects ++ jsfile) out
-          return (jsfile,haskell)
-
-    setHeader $ \w ->  docTypeHtml $ do
-        head $ script ! type_ "text/javascript" ! src (fromString $ "/"++ js) $ fromStr ""
-        body $ do
-             div ! At.style "background:gray" ! id "idelem" $ fromStr ""
-             w
-
-    page $ wform $
-       (getString Nothing <! [("placeholder","give a program name to save")])
-        `validate` (\name -> do
-          list <- liftIO $ atomically $ listExamples `containsElem`  name
-          if null list
-               then liftIO $ do
-                   writeFile  (projects ++name) hs
-                   renameFile (projects ++js) $ projects ++ name++ ".js"
-                   atomically $ writeDBRef examples $ Examples $ name:exampleList
-                   return Nothing
-               else return $ Just "name already used")
-       **> submitButton "send" **> return  ()
+--    setHeader $ \w ->  docTypeHtml $ do
+--        head $ script ! type_ "text/javascript" ! src (fromString $ "/"++ js) $ fromStr ""
+--        body $ do
+--             div ! At.style "background:gray" ! id "idelem" $ fromStr ""
+--             w
+--
+--    page $ wform $
+--       (getString Nothing <! [("placeholder","give a program name to save")])
+--        `validate` (\name -> do
+--          list <- liftIO $ atomically $ listExamples `containsElem`  name
+--          if null list
+--               then liftIO $ do
+--                   writeFile  (projects ++name) hs
+--                   renameFile (projects ++js) $ projects ++ name++ ".js"
+--                   atomically $ writeDBRef examples $ Examples $ name:exampleList
+--                   return Nothing
+--               else return $ Just "name already used")
+--       **> submitButton "send" **> return  ()
