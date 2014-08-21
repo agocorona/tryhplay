@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","170")]
+      command <- getString Nothing <! [("width","150")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
