@@ -35,14 +35,14 @@ instance Serializable Examples where
 
 listExamples (Examples list)= list
 
-main = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","50")]
+main1 = runNavigation "tra" . transientNav . page $ do
+      command <- getString Nothing <! [("width","150")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
 
 
-main1= do
+main= do
   indexList listExamples (map TL.pack )
   examples <- atomically $ newDBRef $ Examples ["example.hs"]
 

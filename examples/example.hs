@@ -6,9 +6,7 @@ import Haste.Foreign
 import Haste.Graphics.Canvas
 import Haste.HPlay.View
 import Haste.HPlay.Cell as Cell
-import Haste.Perch
 import Control.Applicative
-import Control.Monad.State
 import Control.Monad
 import Data.Monoid
 import Data.Typeable
