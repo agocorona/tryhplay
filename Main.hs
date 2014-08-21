@@ -54,7 +54,7 @@ main= do
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
 
-    (js,hs) <- page $   pageFlow "input" $ do
+    page $   pageFlow "input" $ do
           example <- b  "you can load also one of these examples "
                      ++> firstOf[wlink e << e <++ " " | e <- exampleList]
                      <|> return "none"
@@ -68,7 +68,7 @@ main= do
           let haskell=  T.unpack r
               hsfile = show trynumber ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
-          r <- p <<< do liftIO . shell $  genericRun "/app/haste-compiler-0.3/haste-compiler/hastec" [hsfile] "--output-html"
+          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/haste-compiler-0.3/haste-compiler/hastec" [hsfile] "--output-html"
 --          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
 --          out <- case r of
@@ -78,9 +78,9 @@ main= do
             Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found "++  errs)
             Right (b,out,err) ->
                   case err of
-                      "" -> return ()
+                      "" -> (a  ! href  (fromString(projects++ show trynumber++".html")) $ "execute") ++> empty
                       errs -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
-          (a  ! href (projects++ show trynumber++".html") $ "execute") ++> empty
+          
 --          p <<< submitButton  "execute"
 ----          let jsfile = show trynumber ++ ".js"
 ----          liftIO $ writeFile  (projects ++ jsfile) out
