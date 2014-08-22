@@ -8,9 +8,10 @@ import Haste.HPlay.View
 import Haste.HPlay.Cell as Cell
 import Control.Applicative
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Monoid
 import Data.Typeable
-import Prelude hiding (div,all)
+import Prelude hiding (div,all,id)
 import qualified Data.Map as V
 import Data.Maybe
 import Data.List(isInfixOf)
@@ -167,7 +168,7 @@ drawcanvas=
       let initial= "x*x+x+10;"
           sanitize str= if isInfixOf "alert" str then initial else str
       expr <- inputString (Just initial) `fire` OnKeyUp <++ br <|> return initial
-      wraw $ canvas ! Haste.Perch.id "canvas"  $ noHtml
+      wraw $ canvas ! id "canvas"  $ noHtml
       wraw $ draw $sanitize expr)
 
 
@@ -349,7 +350,7 @@ naiveTodo= do
          at "list" Insert $ foldl (<|>) mempty [ display t | t <- (task:tasks)]
          return ()
      <|>
-      wraw (div ! Haste.Perch.id "list" $ noHtml)
+      wraw (div ! id "list" $ noHtml)
 
 
 
