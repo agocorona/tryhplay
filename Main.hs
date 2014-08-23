@@ -68,18 +68,19 @@ main= do
           let haskell=  T.unpack r
               hsfile = show trynumber ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
-          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/haste-compiler-0.3/haste-compiler/hastec" [hsfile] "--output-html"
+          r <- liftIO . shell $ inDirectory projects $ genericRun "~/.cabal/bin/hastec" [hsfile] "" !> hsfile
 --          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
 --          out <- case r of
 --              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
 --              Success (OutString out) -> return out  !>  "*******SUCCESS"
-          case r of
-            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found "++  errs)
-            Right (b,out,err) ->
-                  case err of
-                      "" -> (a  ! href  (fromString(projects++ show trynumber++".html")) $ "execute") ++> empty
-                      errs -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
+          fromStr (show r) ++> empty
+--          case r of
+--            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found hastec"++  errs)
+--            Right (b,out,err) ->
+--                  case b of
+--                      True  -> (a  ! href  (fromString(show trynumber++".html")) $ "execute") ++> empty
+--                      False -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
 
 --          p <<< submitButton  "execute"
 ----          let jsfile = show trynumber ++ ".js"
