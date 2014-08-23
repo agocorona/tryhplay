@@ -35,73 +35,47 @@ instance Serializable Examples where
 
 listExamples (Examples list)= list
 
-main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","110")]
-      let args= words command
-      r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
-      b  << (show  r) ++> empty
+
 
 
 main= do
   indexList listExamples (map TL.pack )
-  examples <- atomically $ newDBRef $ Examples ["example.hs"]
+  examples <- atomically $ newDBRef $ Examples ["example.hs","todo.hs","sumtwonumbers.hs"]
 
   setFilesPath projects
-
+  let dontcare ="updateme"
   runNavigation "try" . transientNav $ do
-    let trynumber= 3
+
 
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
 
-    page $ pageFlow "input" $ do
+    page  $ do
           example <- b  "you can load also one of these examples "
                      ++> firstOf[wlink e << e <++ " " | e <- exampleList]
                      <|> return "none"
 
           extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
 
-          r <- p <<< (getMultilineText extext <! [("style","width:100%;height:300")]
+          (name,r) <- p <<< ( (,) <$> getString (Just "dontcare")
+                                  <*> getMultilineText extext <! [("style","width:100%;height:300")]
                         <++ br
-                        <** submitButton "send"
+                        <** submitButton "compile"
                         <++ br)
+
+
           let haskell=  T.unpack r
-              hsfile = show trynumber ++ ".hs"
+              hsfile =  name ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
-          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
---          r <- p <<< do liftIO $ compile def "./" $ InString haskell
-
---          out <- case r of
---              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
---              Success (OutString out) -> return out  !>  "*******SUCCESS"
-          wraw $ fromStr (show r)
+--          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
+          r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
           case r of
-            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found hastec"++  errs)
-            Right (b,out,err) ->
-                  case b of
-                      True  -> (a  ! href  (fromString("/"++show trynumber++".html")) $ "execute") ++> empty
-                      False -> fromStr err ++> empty   !> "failure"
+            Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
+            Right (r,out,err) ->
+              case r of
+                  True  -> do
 
---          p <<< submitButton  "execute"
-----          let jsfile = show trynumber ++ ".js"
-----          liftIO $ writeFile  (projects ++ jsfile) out
---          return (jsfile,haskell)
+                    liftIO $ atomically $ writeDBRef examples . Examples $ (name++".hs"):exampleList
+                    (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
+                  False -> fromStr err ++> empty
 
---    setHeader $ \w ->  docTypeHtml $ do
---        head $ script ! type_ "text/javascript" ! src (fromString $ "/"++ js) $ fromStr ""
---        body $ do
---             div ! At.style "background:gray" ! id "idelem" $ fromStr ""
---             w
---
---    page $ wform $
---       (getString Nothing <! [("placeholder","give a program name to save")])
---        `validate` (\name -> do
---          list <- liftIO $ atomically $ listExamples `containsElem`  name
---          if null list
---               then liftIO $ do
---                   writeFile  (projects ++name) hs
---                   renameFile (projects ++js) $ projects ++ name++ ".js"
---                   atomically $ writeDBRef examples $ Examples $ name:exampleList
---                   return Nothing
---               else return $ Just "name already used")
---       **> submitButton "send" **> return  ()
