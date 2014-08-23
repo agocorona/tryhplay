@@ -67,14 +67,13 @@ main= do
           let haskell=  T.unpack r
               hsfile =  name ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
---          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
-          r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
+          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
+--          r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
           case r of
             Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
             Right (r,out,err) ->
               case r of
                   True  -> do
-
                     liftIO $ atomically $ writeDBRef examples . Examples $ (name++".hs"):exampleList
                     (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
                   False -> fromStr err ++> empty
