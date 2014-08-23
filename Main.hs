@@ -54,7 +54,7 @@ main= do
     Examples exampleList <- liftIO $ atomically $ readDBRef examples
                          `onNothing` error "examples empty"
 
-    page $   pageFlow "input" $ do
+    page $ pageFlow "input" $ do
           example <- b  "you can load also one of these examples "
                      ++> firstOf[wlink e << e <++ " " | e <- exampleList]
                      <|> return "none"
@@ -68,19 +68,19 @@ main= do
           let haskell=  T.unpack r
               hsfile = show trynumber ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
-          r <- liftIO . shell $ inDirectory projects $ genericRun "~/.cabal/bin/hastec" [hsfile] "" !> hsfile
+          r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] "" !> hsfile
 --          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
 --          out <- case r of
 --              Failure errs -> fromStr errs ++> empty !> ("*******Failure: "++  errs)
 --              Success (OutString out) -> return out  !>  "*******SUCCESS"
-          fromStr (show r) ++> empty
---          case r of
---            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found hastec"++  errs)
---            Right (b,out,err) ->
---                  case b of
---                      True  -> (a  ! href  (fromString(show trynumber++".html")) $ "execute") ++> empty
---                      False -> fromStr errs ++> empty   !> ("*******Failure: "++  errs)
+--          fromStr (show r) ++> empty
+          case r of
+            Left errs -> fromStr errs ++> empty  !> ("*******Failure: not found hastec"++  errs)
+            Right (b,out,err) ->
+                  case b of
+                      True  -> (a  ! href  (fromString("/"++show trynumber++".html")) $ "execute") ++> empty
+                      False -> fromStr err ++> empty   
 
 --          p <<< submitButton  "execute"
 ----          let jsfile = show trynumber ++ ".js"

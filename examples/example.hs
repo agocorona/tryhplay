@@ -17,7 +17,7 @@ import Data.Maybe
 import Data.List(isInfixOf)
 
 
-main=  withElem "idelem" . runWidget $
+main= runBody $
     do  -- PerchM monad
       h1 ! style "text-align:center" $ "hplayground examples"
       h3 $ center $ do
