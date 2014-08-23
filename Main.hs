@@ -36,7 +36,7 @@ instance Serializable Examples where
 listExamples (Examples list)= list
 
 main1 = runNavigation "tra" . transientNav . page $ do
-      command <- getString Nothing <! [("width","100")]
+      command <- getString Nothing <! [("width","110")]
       let args= words command
       r <- liftIO $ shell $  genericRun (L.head args) (Prelude.tail args) ""
       b  << (show  r) ++> empty
@@ -68,7 +68,7 @@ main= do
           let haskell=  T.unpack r
               hsfile = show trynumber ++ ".hs"
           liftIO $ writeFile  (projects ++ hsfile) haskell
---          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
+          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] "" !> hsfile
 --          r <- p <<< do liftIO $ compile def "./" $ InString haskell
 
 --          out <- case r of
