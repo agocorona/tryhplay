@@ -15,10 +15,10 @@ Install [haskell, haste and hplayground](https://github.com/agocorona/hplaygroun
 
 clone hplay-todo
 
-      >git clone http://github.com/agocorona/hplayground
+      > git clone http://github.com/agocorona/hplay-todo
 
 build the Html
 
-      >cd src
+      > cd src
       > hastec todo.hs --output-html
 
