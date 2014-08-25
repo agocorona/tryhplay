@@ -42,38 +42,52 @@ main= do
   setFilesPath projects
   let dontcare ="updateme"
   runNavigation "try" . transientNav $ do
-    page . pageFlow "try" $ do
+    example <- page $ do
           Examples exampleList <- liftIO $ atomically $ readDBRef examples
                                   `onNothing` error "examples empty"
-
-          example <- wform $ b  "you can load also one of these examples "
-                     ++> firstOf[submitButton e  <++ " " | e <- exampleList]
-                     <|> return "none"
-
-          extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
-
-          (name,r) <- wform $ p <<< ( (,) <$> getString (Just example)
-                                  <*> getMultilineText extext <! [("style","width:100%;height:300")]
-                        <++ br
-                        <** submitButton "compile"
-                        <++ br)
-
-
-          let haskell=  T.unpack r
-              hsfile =  name ++ ".hs"
-          liftIO $ writeFile  (projects ++ hsfile) haskell
-
-          let html =   projects ++ name ++ ".html"
+          wraw $ h1 "Try Playground"
+          name' <- h2 << b  "you can load one of these examples "
+                     ++> firstOf[wlink e << e <++ " " | e <- exampleList]
+                     <|> p <<< wlink "none"  "or create a blank program"
+          let name= strip name'
+              html =   projects ++ name ++ ".html"
           exist <- liftIO $ doesFileExist html
-          when exist . liftIO $ removeFile html
-          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+          wraw $ h2 << b << name' 
+          if exist
+           then
+            p <<< (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
+            <|> wlink name' << p  "modify"
+           else return name'
+
+    name <- page $ do
+      extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
+      (name',r) <- p <<< ( (,) <$> getString (Just example)
+                              <*> getMultilineText extext <! [("style","width:100%;height:300")]
+                    <++ br
+                    <** submitButton "compile"
+                    <++ br)
+      let name= strip name'
+          hsfile =  name ++ ".hs"
+          haskell=  T.unpack r
+      liftIO $ writeFile  (projects ++ hsfile) haskell
+--          r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --          r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-          case r of
+      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      case r of
             Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
             Right (r,out,err) ->
               case r of
-                  True  -> do
+                  True  -> return name
+                  False -> fromStr err ++> empty
+    page $ do
+                    Examples exampleList <- liftIO $ atomically $ readDBRef examples
+                                  `onNothing` error "examples empty"
+
                     liftIO . atomically . writeDBRef examples . Examples . L.nub $ (name++".hs"):exampleList
                     (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
-                  False -> fromStr err ++> empty
+
+
+strip name'=
+      let rname= reverse name'
+      in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
