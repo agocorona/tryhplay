@@ -72,9 +72,9 @@ main= do
           code= filter (/='\r') $ T.unpack r
           des= unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
       liftIO $ writeFile  (projects ++ hsfile) code
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
         Right (r,out,err) ->
