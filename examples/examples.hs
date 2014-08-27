@@ -1,5 +1,4 @@
--- many small examples working together.
--- Demonstrates how easy is to compose widgets.
+-- many of the small examples togeter
 
 {-# LANGUAGE  DeriveDataTypeable #-}
 module Main where
@@ -278,11 +277,7 @@ formWidget=  center <<< do -- PerchM monad
   ++>
    do
       (n,s) <- (,) <$> p << "Who are you? "
-                   ++> getString Nothing <! hint "name"     <++ br
-                   <*> getString Nothing <! hint "surname"  <++ br
-                   <** submitButton "ok" `fire` OnClick <++ br
-
-      flag <- b << "Do you " ++> getRadio[radiob "work?",radiob "study?"] <++ br
+                   ++> getString Nothing  getString Nothing  getRadio[radiob "work?",radiob "study?"] <++ br
 
       r<- case flag of
          "work?" -> Left  <$> b << "do you enjoy your work? "

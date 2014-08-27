@@ -48,10 +48,6 @@ initExamples= do
   let sources = filter (".hs" `L.isSuffixOf`) ss
   exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s $ extractDes t)) sources
   return $ Examples exs
--- return $
---      Examples [ Example "example.hs" "muiltiple examples togeter"
---               , Example "todo.hs" "the todo application as defined in todoMVC.com"
---               , Example "sumtwonumbers.hs" "Sum thow numbers"] 
 
 
 main= do
@@ -63,11 +59,14 @@ main= do
     example <- page $ do
           Examples exampleList <- liftIO $ atomically (readDBRef examples)
                                   `onNothing` initExamples
-          wraw $ h1 "Try Playground"
-          wraw $ h2 "you can load one of these examples "
-          firstOf[handle e | e <- exampleList]
-              <|> p <<< wlink "none"  "or create a new program"
-         
+          wraw $ do
+            h1 $ do
+                "Try"
+                a ! href "//github.com/agocorona/playground" $ "Playground"
+            h2 "you can load one of these examples "
+          r <- firstOf[handle e | e <- exampleList]
+              <|> h2 <<< wlink "none"  "or create a new program"
+          if r == "delete" then empty else return r
     name <- page $ do
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r) <- (wform  $
@@ -82,9 +81,10 @@ main= do
           code= filter (/='\r') $ T.unpack r
           des= extractDes code
       liftIO $ writeFile  (projects ++ hsfile) code
-      Examples exampleList <- liftIO $ atomically $ readDBRef examples
-                      `onNothing` error "examples empty"
-      liftIO . atomically . writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
+      liftIO $ atomically $ do
+        Examples exampleList <- readDBRef examples
+                      `onNothing` unsafeIOToSTM initExamples
+        writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
 
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
@@ -111,26 +111,27 @@ handle e= do
      html = projects ++ name ++ ".html"
 
  (wlink name' << name' <++ br) `wcallback` const (do
-      compiled <- liftIO $ doesFileExist html
-      wraw $ do
+     compiled <- liftIO $ doesFileExist html
+     wraw $ do
            b  << name'
            ": "
            mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ desc e
 
-      p ! At.style "margin-left:5%"
+     p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name ++> empty
         <|>  " " ++>  wlink name' "edit"
-        <**  " " ++> ((submitButton "delete" <++ br) `wcallback` const (deletef name'))) )
+        <|>  " " ++> ((wlink ("delete" :: String) "delete" <++ br) `wcallback` const (deletef name'))) )
 
  where
  maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
 
  deletef fil  = liftIO $ do
    removeFile $ projects ++ fil
-   Examples exampleList <- liftIO $ atomically $ readDBRef examples
-                      `onNothing` error "examples empty"
-   liftIO . atomically . writeDBRef examples . Examples $ L.delete (Example fil undefined) exampleList
-
+   liftIO $ atomically $ do
+     Examples exampleList <- readDBRef examples !> "delete"
+                      `onNothing` unsafeIOToSTM initExamples
+     writeDBRef examples . Examples $ L.delete (Example fil undefined) exampleList
+   return "delete"
 
 acedit = [shamlet|
  <style type="text/css" media="screen">
