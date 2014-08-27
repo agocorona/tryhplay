@@ -43,10 +43,15 @@ listExamples (Examples list)= list
 
 examples= getDBRef "examples"
 
-initExamples= return $
-      Examples [ Example "example.hs" "muiltiple examples togeter"
-               , Example "todo.hs" "the todo application as defined in todoMVC.com"
-               , Example "sumtwonumbers.hs" "Sum thow numbers"] 
+initExamples= do
+  ss <- getDirectoryContents projects
+  let sources = filter (".hs" `L.isSuffixOf`) ss
+  exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s $ extractDes t)) sources
+  return $ Examples exs
+-- return $
+--      Examples [ Example "example.hs" "muiltiple examples togeter"
+--               , Example "todo.hs" "the todo application as defined in todoMVC.com"
+--               , Example "sumtwonumbers.hs" "Sum thow numbers"] 
 
 
 main= do
@@ -75,7 +80,7 @@ main= do
       let name= strip name'
           hsfile = name ++ ".hs"
           code= filter (/='\r') $ T.unpack r
-          des= unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
+          des= extractDes code
       liftIO $ writeFile  (projects ++ hsfile) code
       Examples exampleList <- liftIO $ atomically $ readDBRef examples
                       `onNothing` error "examples empty"
@@ -93,6 +98,7 @@ main= do
 
     page $ (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
 
+extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
 strip name'=
   let rname= reverse name'
