@@ -13,6 +13,7 @@ import Data.TCache.DefaultPersistence
 import Data.TCache.IndexText
 
 import System.Directory
+import System.IO.Unsafe
 import qualified Data.ByteString.Lazy.Char8 as B
 import Data.Typeable
 import Data.Monoid
@@ -40,19 +41,23 @@ instance Serializable Examples where
 
 listExamples (Examples list)= list
 
-main= do
-  indexList listExamples (map TL.pack . map exname )
-  examples <- atomically $ newDBRef $
+examples= getDBRef "examples"
+
+initExamples= return $
       Examples [ Example "example.hs" "muiltiple examples togeter"
                , Example "todo.hs" "the todo application as defined in todoMVC.com"
                , Example "sumtwonumbers.hs" "Sum thow numbers"] 
 
-  setFilesPath projects
 
+main= do
+  indexList listExamples (map TL.pack . map exname )
+
+  setFilesPath projects
+  
   runNavigation "try" . transientNav $ do
     example <- page $ do
-          Examples exampleList <- liftIO $ atomically $ readDBRef examples
-                                  `onNothing` error "examples empty"
+          Examples exampleList <- liftIO $ atomically (readDBRef examples)
+                                  `onNothing` initExamples
           wraw $ h1 "Try Playground"
           wraw $ h2 "you can load one of these examples "
           firstOf[handle e | e <- exampleList]
@@ -109,19 +114,22 @@ handle e= do
       p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name ++> empty
         <|>  " " ++>  wlink name' "edit"
-        <**  " " ++> (wlink name' "delete" <++ br) `wcallback` deletef) )
+        <**  " " ++> ((submitButton "delete" <++ br) `wcallback` const (deletef name'))) )
 
  where
- maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty
- deletef  = liftIO . removeFile
+ maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
+
+ deletef fil  = liftIO $ do
+   removeFile $ projects ++ fil
+   Examples exampleList <- liftIO $ atomically $ readDBRef examples
+                      `onNothing` error "examples empty"
+   liftIO . atomically . writeDBRef examples . Examples $ L.delete (Example fil undefined) exampleList
 
 
 acedit = [shamlet|
  <style type="text/css" media="screen">
     #editor {
-        position: relative;
-        width: 100%;
-        height: 400;
+    width: 100%;
     }
 
 
@@ -134,7 +142,20 @@ acedit = [shamlet|
     var editor = ace.edit("editor");
     // editor.setTheme("ace/theme/monokai");
     editor.getSession().setMode("ace/mode/haskell");
+    editor.getSession().on('change', heightUpdateFunction);
+    heightUpdateFunction();
 
+    function heightUpdateFunction() {
+
+        // http://stackoverflow.com/questions/11584061/
+        var newHeight =
+                  editor.getSession().getScreenLength()
+                  * editor.renderer.lineHeight
+                  + editor.renderer.scrollBar.getWidth();
+
+        document.getElementById("editor").style.height= newHeight.toString() + "px";
+        editor.resize();
+        }
     function copyContent () {
      document.getElementById("hiddenTextarea").value =
         editor.getSession().getValue();
