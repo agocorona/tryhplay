@@ -63,7 +63,9 @@ main= do
             h1 $ do
                 "Try"
                 a ! href "//github.com/agocorona/playground" $ "Playground"
-            h2 "you can load one of these examples "
+            p $ "The haskell client-side framework."
+            p $ "Create, compile to HTML+JavaScript and execute your programs"
+            h2 "you can use one of these examples "
           r <- firstOf[handle e | e <- exampleList]
               <|> h2 <<< wlink "none"  "or create a new program"
           if r == "delete" then empty else return r
@@ -86,9 +88,9 @@ main= do
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
 
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
         Right (r,out,err) ->
