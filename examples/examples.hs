@@ -1,3 +1,6 @@
+-- many small examples working together.
+-- Demonstrates how easy is to compose widgets.
+
 {-# LANGUAGE  DeriveDataTypeable #-}
 module Main where
 import Haste
@@ -234,7 +237,7 @@ mouse= do
     evdata  <- getEventData
     wraw $ p << ( (evName evdata) ++" "++ show (evData evdata))
 
-linksample= br ++> wlink "Hi!" (toElem "This link say Hi!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
+linksample= br ++> wlink "Hey!" (toElem "This link say Hey!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
 
 buttons= p "Different input elements:" ++> checkButton
                                        **> br ++> br
@@ -257,6 +260,7 @@ buttons= p "Different input elements:" ++> checkButton
 
     select= do
        r <- getSelect (   setOption "red"   (fromStr "red")  
+
                       <|> setOption "green" (fromStr "green")
                       <|> setOption "blue"  (fromStr "blue"))
               `fire` OnClick

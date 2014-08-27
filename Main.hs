@@ -48,7 +48,7 @@ main= do
                , Example "sumtwonumbers.hs" "Sum thow numbers"] 
 
   setFilesPath projects
-  let dontcare ="updateme"
+
   runNavigation "try" . transientNav $ do
     example <- page $ do
           Examples exampleList <- liftIO $ atomically $ readDBRef examples
@@ -72,19 +72,20 @@ main= do
           code= filter (/='\r') $ T.unpack r
           des= unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
       liftIO $ writeFile  (projects ++ hsfile) code
-      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+      Examples exampleList <- liftIO $ atomically $ readDBRef examples
+                      `onNothing` error "examples empty"
+      liftIO . atomically . writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
+
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
---      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
         Right (r,out,err) ->
           case r of
-              True  -> do
-                 Examples exampleList <- liftIO $ atomically $ readDBRef examples
-                      `onNothing` error "examples empty"
-                 liftIO . atomically . writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
-                 return name
-              False -> fromStr err ++> empty
+              True  -> return name
+              False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ err) ++> empty
+
     page $ (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
 
 
@@ -99,16 +100,20 @@ handle e= do
      html = projects ++ name ++ ".html"
 
  (wlink name' << name' <++ br) `wcallback` const (do
-      exist <- liftIO $ doesFileExist html
+      compiled <- liftIO $ doesFileExist html
       wraw $ do
            b  << name'
            ": "
-           toHtml $ desc e 
-      if exist
-       then
-        (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
-        <|> wlink name'  " modify" <++ br
-       else return name')
+           mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ desc e
+
+      p ! At.style "margin-left:5%"
+        <<< (maybeExecute compiled name ++> empty
+        <|>  " " ++>  wlink name' "edit"
+        <**  " " ++> (wlink name' "delete" <++ br) `wcallback` deletef) )
+
+ where
+ maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty
+ deletef  = liftIO . removeFile
 
 
 acedit = [shamlet|
@@ -116,14 +121,11 @@ acedit = [shamlet|
     #editor {
         position: relative;
         width: 100%;
-        height: 200;
+        height: 400;
     }
 
 
- <div id="editor">function foo(items) {
-    var x = "All this is syntax highlighted";
-    return x;
-  }
+ <div id="editor">
 
 
  <script src="//cdnjs.cloudflare.com/ajax/libs/ace/1.1.3/ace.js" type="text/javascript" charset="utf-8">

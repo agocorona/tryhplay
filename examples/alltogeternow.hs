@@ -1,3 +1,6 @@
+-- many small examples working together.
+-- Demonstrate how easy is to compose widgets.
+
 {-# LANGUAGE  DeriveDataTypeable #-}
 module Main where
 import Haste
@@ -234,7 +237,7 @@ mouse= do
     evdata  <- getEventData
     wraw $ p << ( (evName evdata) ++" "++ show (evData evdata))
 
-linksample= br ++> wlink "Hi!" (toElem "This link say Hi!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
+linksample= br ++> wlink "Hey!" (toElem "This link say Hey!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
 
 buttons= p "Different input elements:" ++> checkButton
                                        **> br ++> br
@@ -274,11 +277,7 @@ formWidget=  center <<< do -- PerchM monad
   ++>
    do
       (n,s) <- (,) <$> p << "Who are you? "
-                   ++> getString Nothing <! hint "name"     <++ br
-                   <*> getString Nothing <! hint "surname"  <++ br
-                   <** submitButton "ok" `fire` OnClick <++ br
-
-      flag <- b << "Do you " ++> getRadio[radiob "work?",radiob "study?"] <++ br
+                   ++> getString Nothing  getString Nothing  getRadio[radiob "work?",radiob "study?"] <++ br
 
       r<- case flag of
          "work?" -> Left  <$> b << "do you enjoy your work? "
