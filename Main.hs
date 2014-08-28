@@ -76,21 +76,23 @@ main= do
                                <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
                     <++ acedit
                     <** br
-                    ++> submitButton "compile"
+                    ++> submitButton "save & compile"
                     <++ br))) <! [("onsubmit","return copyContent()")]
+
       let name= strip name'
           hsfile = name ++ ".hs"
           code= filter (/='\r') $ T.unpack r
           des= extractDes code
       liftIO $ writeFile  (projects ++ hsfile) code
+      let edited= Example (name++".hs") des
       liftIO $ atomically $ do
         Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
-        writeDBRef examples . Examples . L.nub $ (Example (name++".hs") des):exampleList
+        writeDBRef examples . Examples . L.nub $ edited:exampleList
 
-      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
---      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
         Right (r,out,err) ->
@@ -98,7 +100,7 @@ main= do
               True  -> return name
               False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ err) ++> empty
 
-    page $ (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
+    page $ handle (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
@@ -122,7 +124,8 @@ handle e= do
      p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name ++> empty
         <|>  " " ++>  wlink name' "edit"
-        <|>  " " ++> ((wlink ("delete" :: String) "delete" <++ br) `wcallback` const (deletef name'))) )
+        <|>  " " ++>  (wlink ("delete" :: String) "delete" <++ br)
+                      `waction` const (deletef name')))
 
  where
  maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
