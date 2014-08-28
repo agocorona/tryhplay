@@ -28,10 +28,14 @@ import Debug.Trace
 
 projects= "./examples/"
 
-data Example= Example{exname, desc :: String} deriving (Read,Show,Typeable)
+type Url = String
+
+data Source = Local | Git Url deriving (Read,Show)
+
+data Example= Example{exname, desc :: String, source:: Source} deriving (Read,Show,Typeable)
 
 instance Eq Example where
-  Example n _ == Example n' _ = n == n'
+  Example n _ _ == Example n' _ _ = n == n'
 
 data Examples= Examples [Example] deriving (Read,Show,Typeable)
 instance Indexable Examples where key = const "examples"
@@ -46,7 +50,7 @@ examples= getDBRef "examples"
 initExamples= do
   ss <- getDirectoryContents projects
   let sources = filter (".hs" `L.isSuffixOf`) ss
-  exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s $ extractDes t)) sources
+  exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s (extractDes t) Local) ) sources
   return $ Examples exs
 
 
@@ -61,15 +65,19 @@ main= do
                                   `onNothing` initExamples
           wraw $ do
             h1 $ do
-                "Try"
+                "Try "
                 a ! href "//github.com/agocorona/playground" $ "Playground"
             p $ "The haskell client-side framework."
-            p $ "Create, compile to HTML+JavaScript and execute your programs"
+            p $ "Create, compile to HTML+JavaScript and execute your programs in the browser"
             h2 "you can use one of these examples "
+
           r <- firstOf[handle e | e <- exampleList]
               <|> h2 <<< wlink "none"  "or create a new program"
-          if r == "delete" then empty else return r
-    name <- page $ do
+              <|> h2 <<< (wlink ("git" :: String) "Compile a Haste/Hplayground project from a Git repository" `waction` fromGit)
+
+          if r == "noedit" then empty else return r
+
+    edited <- page $ do
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r) <- (wform  $
                   p <<< (( (,) <$> getString (Just example) <! [("placeholder","name")]
@@ -84,7 +92,7 @@ main= do
           code= filter (/='\r') $ T.unpack r
           des= extractDes code
       liftIO $ writeFile  (projects ++ hsfile) code
-      let edited= Example (name++".hs") des
+      let edited= Example (name++".hs") des Local
       liftIO $ atomically $ do
         Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
@@ -97,10 +105,10 @@ main= do
         Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
         Right (r,out,err) ->
           case r of
-              True  -> return name
+              True  -> return edited
               False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ err) ++> empty
 
-    page $ handle (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
+    page $ (showExcerpt  edited  >> return ()) <|> wlink () "home" -- (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
@@ -111,10 +119,14 @@ strip name'=
 handle :: Example -> View Html IO String
 handle e= do
  let name'= exname e
-     name = strip $ exname e
-     html = projects ++ name ++ ".html"
 
- (wlink name' << name' <++ br) `wcallback` const (do
+ (wlink name' << name' <++ br) `wcallback`  const (showExcerpt e)
+
+showExcerpt e= do
+     let name'= exname e
+         name = strip name'
+         html = projects ++ name ++ ".html"
+
      compiled <- liftIO $ doesFileExist html
      wraw $ do
            b  << name'
@@ -125,7 +137,7 @@ handle e= do
         <<< (maybeExecute compiled name ++> empty
         <|>  " " ++>  wlink name' "edit"
         <|>  " " ++>  (wlink ("delete" :: String) "delete" <++ br)
-                      `waction` const (deletef name')))
+                      `waction` const (deletef name'))
 
  where
  maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
@@ -135,8 +147,20 @@ handle e= do
    liftIO $ atomically $ do
      Examples exampleList <- readDBRef examples !> "delete"
                       `onNothing` unsafeIOToSTM initExamples
-     writeDBRef examples . Examples $ L.delete (Example fil undefined) exampleList
-   return "delete"
+     writeDBRef examples . Examples $ L.delete (Example fil undefined Local) exampleList
+   return "noedit"
+
+
+fromGit _ = ask $ do
+    url <- getString Nothing <![("placeholder","URL of the git repository")]
+    liftIO $ atomically $ do
+        Examples exampleList <- readDBRef examples
+                      `onNothing` unsafeIOToSTM initExamples
+        let edited = Example (reverse . takeWhile (/='/')$ reverse url) url (Git url)
+        writeDBRef examples . Examples . L.nub $ edited:exampleList
+    liftIO . shell $ inDirectory projects $ genericRun "git" ["clone", url] ""
+    return "noedit"
+
 
 acedit = [shamlet|
  <style type="text/css" media="screen">
