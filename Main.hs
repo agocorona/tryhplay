@@ -15,6 +15,8 @@ import Data.TCache.IndexText
 import System.Directory
 import System.IO.Unsafe
 import qualified Data.ByteString.Lazy.Char8 as B
+import qualified Text.Show.ByteString as ShowB
+import qualified Data.ByteString.Char8 as SB
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
@@ -23,6 +25,8 @@ import Control.Monad
 import Control.Shell
 import Text.Hamlet
 import Debug.Trace
+import System.Time
+
 
 (!>)= flip trace
 
@@ -71,13 +75,13 @@ main= do
             p $ "Create, compile to HTML+JavaScript and execute your programs in the browser"
             h2 "you can use one of these examples "
 
-          r <- firstOf[handle e | e <- exampleList]
+          firstOf[handle e | e <- exampleList]
               <|> h2 <<< wlink "none"  "or create a new program"
               <|> h2 <<< (wlink ("git" :: String) "Compile a Haste/Hplayground project from a Git repository" `waction` fromGit)
 
-          if r == "noedit" then empty else return r
 
-    edited <- page $ do
+    if example== "noedit" then return () else do
+     page $ wlink () "home" <|> do
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r) <- (wform  $
                   p <<< (( (,) <$> getString (Just example) <! [("placeholder","name")]
@@ -86,6 +90,8 @@ main= do
                     <** br
                     ++> submitButton "save & compile"
                     <++ br))) <! [("onsubmit","return copyContent()")]
+
+
 
       let name= strip name'
           hsfile = name ++ ".hs"
@@ -102,13 +108,36 @@ main= do
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
       r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
-        Left errs -> fromStr ("*******Failure: not found hastec"++  errs) ++> empty
+        Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
           case r of
-              True  -> return edited
-              False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ err) ++> empty
+              True -> do
+                let html= name ++ ".html"
+                p <<  b "compilation sucessful! "
 
-    page $ (showExcerpt  edited  >> return ()) <|> wlink () "home" -- (a  ! href  (fromString("/"++name++".html")) $ "execute") ++> empty
+                ++> execute name
+
+            
+              False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines  err) ++> empty
+      <|> wlink () "home"
+      <** executeEmbed example ++> empty
+
+execute name= do
+    let html= name ++ ".html"
+    wlink ("execute" :: String) "execute" <++ " in a page"
+    content <- liftIO $ B.readFile $ projects ++ html
+    setHttpHeader  "Content-Type" "text/html"
+    TOD t _ <- liftIO $ getClockTime
+    etag . toStrict $ ShowB.show t
+    maxAge 3600
+    rawSend content
+
+toStrict=  SB.concat . B.toChunks
+
+executeEmbed name=
+  iframe ! At.style "position:absolute;left:50%;top:0%;width:50%;height:100%"
+         ! src (fromString("/try/"++ name++"/execute")) $ mempty
+
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
@@ -134,13 +163,16 @@ showExcerpt e= do
            mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ desc e
 
      p ! At.style "margin-left:5%"
-        <<< (maybeExecute compiled name ++> empty
-        <|>  " " ++>  wlink name' "edit"
-        <|>  " " ++>  (wlink ("delete" :: String) "delete" <++ br)
-                      `waction` const (deletef name'))
+        <<< (maybeExecute compiled name
+        **>  " " ++>  (wlink ("edit" :: String) "edit" >> return name')
+        <|>  " " ++>  do wlink ("delete" :: String) "delete" <++ br
+                         deletef name')
 
  where
- maybeExecute compiled name= if compiled then a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
+ maybeExecute compiled name= when compiled $ execute name
+-- maybeEdit e= if
+
+  -- a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
 
  deletef fil  = liftIO $ do
    removeFile $ projects ++ fil
@@ -165,7 +197,7 @@ fromGit _ = ask $ do
 acedit = [shamlet|
  <style type="text/css" media="screen">
     #editor {
-    width: 100%;
+    width: 50%;
     }
 
 

@@ -33,7 +33,7 @@ active= "active"
 completed= "completed"
 
 main= do
-  addHeader $ link ! atr "rel" "stylesheet" ! href "base.css"
+  addHeader $ link ! atr "rel" "stylesheet" ! href "/base.css"
   runBody todo
 
 todo ::  Widget ()

@@ -20,6 +20,6 @@ executable tryplayground
   -- other-modules:       
   -- other-extensions:    
   build-depends:       base , MFlow, data-default ,directory , TCache, text, haste-compiler,
-                       bytestring, blaze-html, shellmate, shakespeare
+                       bytestring,bytestring-show, blaze-html, shellmate, shakespeare, old-time
   -- hs-source-dirs:      
   default-language:    Haskell2010
