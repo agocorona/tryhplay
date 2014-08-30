@@ -100,7 +100,7 @@ main= do
           des= extractDes code
 
       liftIO $ writeFile  (projects ++ hsfile) code
-      let edited= Example (name++".hs") des Local
+      let edited= Example (name ++ ".hs") des Local
       liftIO $ atomically $ do
         Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
@@ -120,8 +120,7 @@ main= do
                 p $  b "compilation sucessful! "
                 a ! href (fromString $ "/exec/"++ name ++ ".html" ) $ "execute full page"
  
-              False ->
-               notValid $ errorEmbed err
+              False ->  notValid $ errorEmbed err
 
       <|> p <<< wlink () "home"
 
