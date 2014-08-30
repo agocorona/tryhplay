@@ -15,8 +15,8 @@ import Data.TCache.IndexText
 import System.Directory
 import System.IO.Unsafe
 import qualified Data.ByteString.Lazy.Char8 as B
-import qualified Text.Show.ByteString as ShowB
 import qualified Data.ByteString.Char8 as SB
+import qualified Data.Text as T
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
@@ -25,7 +25,7 @@ import Control.Monad
 import Control.Shell
 import Text.Hamlet
 import Debug.Trace
-import System.Time
+
 
 
 (!>)= flip trace
@@ -61,7 +61,8 @@ initExamples= do
 main= do
   indexList listExamples (map TL.pack . map exname )
 
-  setFilesPath projects
+
+  addMessageFlows [("exec", wstateless serveOutputRest)]
   
   runNavigation "try" . transientNav $ do
     example <- page $ do
@@ -82,8 +83,9 @@ main= do
 
     if example== "noedit" then return () else do
      page $ wlink () "home" <|> do
+     
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
-      (name',r) <- (wform  $
+      (name',r)<- (wform  $
                   p <<< (( (,) <$> getString (Just example) <! [("placeholder","name")]
                                <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
                     <++ acedit
@@ -92,11 +94,11 @@ main= do
                     <++ br))) <! [("onsubmit","return copyContent()")]
 
 
-
       let name= strip name'
           hsfile = name ++ ".hs"
           code= filter (/='\r') $ T.unpack r
           des= extractDes code
+
       liftIO $ writeFile  (projects ++ hsfile) code
       let edited= Example (name++".hs") des Local
       liftIO $ atomically $ do
@@ -104,40 +106,52 @@ main= do
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ edited:exampleList
 
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
           case r of
               True -> do
+               wraw $ executeEmbed name
+               notValid $ do
                 let html= name ++ ".html"
-                p <<  b "compilation sucessful! "
+                p $  b "compilation sucessful! "
+                a ! href (fromString $ "/exec/"++ name ++ ".html" ) $ "execute full page"
+ 
+              False ->
+               notValid $ errorEmbed err
 
-                ++> execute name
+      <|> p <<< wlink () "home"
 
-            
-              False -> (mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines  err) ++> empty
-      <|> wlink () "home"
-      <** executeEmbed example ++> empty
 
-execute name= do
-    let html= name ++ ".html"
-    wlink ("execute" :: String) "execute" <++ " in a page"
-    content <- liftIO $ B.readFile $ projects ++ html
+serveOutputRest= do
+    mfile <- getRestParam
+    case mfile of
+       Just file -> serveOutput file
+       _ -> wraw $ b  "not found"
+
+serveOutput name= do
+    let file = projects ++ name
+    content <- liftIO $ B.readFile file
+    resetCachePolicy
     setHttpHeader  "Content-Type" "text/html"
-    TOD t _ <- liftIO $ getClockTime
-    etag . toStrict $ ShowB.show t
+    t <- liftIO $ getModificationTime file
+    etag  . SB.pack $ show t
     maxAge 3600
     rawSend content
 
-toStrict=  SB.concat . B.toChunks
+
 
 executeEmbed name=
   iframe ! At.style "position:absolute;left:50%;top:0%;width:50%;height:100%"
-         ! src (fromString("/try/"++ name++"/execute")) $ mempty
+         ! src (fromString $ "/exec/"++ name ++ ".html" )
+         $ mempty
 
+errorEmbed err=
+  div    ! At.style "position:absolute;left:50%;top:0%;width:50%;height:100%"
+         $  pre $ fromStr err
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
@@ -164,15 +178,19 @@ showExcerpt e= do
 
      p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name
-        **>  " " ++>  (wlink ("edit" :: String) "edit" >> return name')
+        **>  " " ++>  do wlink ("edit" :: String) "edit"
+                         return name'
+
         <|>  " " ++>  do wlink ("delete" :: String) "delete" <++ br
                          deletef name')
 
  where
- maybeExecute compiled name= when compiled $ execute name
+ maybeExecute compiled name= when compiled $ do
+               wlink ("execute" :: String) "execute"
+               serveOutput $ name ++ ".html"
+
 -- maybeEdit e= if
 
-  -- a  ! href  (fromString("/"++name++".html")) $ "execute" else mempty !> "delete"
 
  deletef fil  = liftIO $ do
    removeFile $ projects ++ fil
