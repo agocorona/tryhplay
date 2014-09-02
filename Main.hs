@@ -79,7 +79,7 @@ main= do
             p $ "Create, compile to HTML+JavaScript and execute your Haskell programs in the browser"
 
           h2 <<< wlink "none"  "Create a new program"
-            <|> h2 <<< (wlink ("git" :: String) "Compile a Haste/Hplayground project from a Git repository" `waction` fromGit)
+            <|> h2 <<< (wlink ("git" :: String) "Compile a Haste project from a Git repository" `waction` fromGit)
             <|> h2 "Or you can modify one of these examples "
             ++> firstOf[handle e | e <- exampleList]
 
@@ -111,7 +111,8 @@ main= do
 
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
+      r <- liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
@@ -232,9 +233,11 @@ showExcerpt e= do
 
  comp e = page $ do
      cont <- liftIO $ do
-      shell $ inDirectory projects $ genericRun "git" ["pull"] ""
-      shell $ inDirectory (projects ++ exname e)  $ genericRun "haste-inst" ["configure"] ""
-      shell $ inDirectory (projects ++ exname e)  $ genericRun "haste-inst" ["build"] ""
+      git <- liftIO $ findExecutable "git" `onNothing` error "git not foound"
+      shell $ inDirectory projects $ genericRun git ["pull"] ""
+      hasteInst <- liftIO $ findExecutable "haste-inst" `onNothing` error "haste-inst not found"
+      shell $ inDirectory (projects ++ exname e)  $ genericRun hasteInst ["configure"] ""
+      shell $ inDirectory (projects ++ exname e)  $ genericRun hasteInst ["build"] ""
       cabal <- findCabal $ (projects ++ exname e)
       SB.readFile (projects ++ exname e ++"/"++ cabal)
      let (r1,r2)=  SB.breakSubstring "main-is:" cont
@@ -278,13 +281,14 @@ showExcerpt e= do
 
 
 fromGit _ = ask $ do
-    url <- getString Nothing <![("placeholder","URL of the git repository")]
+    url <- getString Nothing <![("size","80"),("placeholder","URL of the git repository")]
     liftIO $ atomically $ do
         Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
         let edited = Example (reverse . takeWhile (/='/')$ reverse url) url (Git url)
         writeDBRef examples . Examples . L.nub $ edited:exampleList
-    liftIO . shell $ inDirectory projects $ genericRun "git" ["clone", url] ""
+    git <- liftIO $ findExecutable "git" `onNothing` error "git not foound"
+    liftIO . shell $ inDirectory projects $ genericRun git ["clone", url] ""
     return "noedit"
 
 

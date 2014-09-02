@@ -1,3 +1,5 @@
+-- Many small examples put together to show how easy is to compose hplayground elements
+
 {-# LANGUAGE  DeriveDataTypeable #-}
 module Main where
 import Haste
@@ -273,7 +275,8 @@ formWidget=  center <<< do -- PerchM monad
   ++>
    do
       (n,s) <- (,) <$> p << "Who are you? "
-                   ++> getString Nothing  getString Nothing  getRadio[radiob "work?",radiob "study?"] <++ br
+                   ++> getString Nothing  
+                   <*> getString Nothing  <++ br
 
       flag <- b << "Do you " ++> getRadio[radiob "work?",radiob "study?"] <++ br
       
