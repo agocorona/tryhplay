@@ -106,9 +106,9 @@ main= do
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ edited:exampleList
 
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
-      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
