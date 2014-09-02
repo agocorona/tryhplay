@@ -31,9 +31,9 @@ data PresentationMode= Mode String deriving Typeable
 all= ""
 active= "active"
 completed= "completed"
-
+ 
 main= do
-  addHeader $ link ! atr "rel" "stylesheet" ! href "/base.css"
+  addHeader $ link ! atr "rel" "stylesheet" ! href "./base.css"
   runBody todo
 
 todo ::  Widget ()
@@ -81,7 +81,7 @@ todo = do
  filters op =at "filters" Insert $ filters' op
 
     where
-    filters' op= (links op `wake` OnClick)
+    filters' op= (links op)
       `wcallback` (\op' -> do
         setSData $ Mode op'
         displayFiltered **> return ()

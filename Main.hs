@@ -2,6 +2,7 @@
 module Main where
 
 import MFlow.Wai.Blaze.Html.All
+import MFlow (mimeTable)
 import Haste.Compiler
 import Data.Default
 import Prelude hiding (id,div,head)
@@ -25,8 +26,8 @@ import Control.Monad
 import Control.Shell
 import Text.Hamlet
 import Debug.Trace
-
-
+import Data.Maybe
+import Data.Char
 
 (!>)= flip trace
 
@@ -61,9 +62,8 @@ initExamples= do
 main= do
   indexList listExamples (map TL.pack . map exname )
 
-
   addMessageFlows [("exec", wstateless serveOutputRest)]
-  
+
   runNavigation "try" . transientNav $ do
     example <- page $ do
           Examples exampleList <- liftIO $ atomically (readDBRef examples)
@@ -82,17 +82,17 @@ main= do
 
 
     if example== "noedit" then return () else do
-     page $ wlink () "home" <|> do
+     page $ do
      
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r)<- (wform  $
-                  p <<< (( (,) <$> getString (Just example) <! [("placeholder","name")]
+                   (,) <$> getString (Just example) <! [("placeholder","name")]
                                <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
                     <++ acedit
                     <** br
                     ++> submitButton "save & compile"
-                    <++ br))) <! [("onsubmit","return copyContent()")]
-
+                    <++ br) <! [("onsubmit","return copyContent()")]
+                    <++ executeEmbed (strip example ++ ".html")
 
       let name= strip name'
           hsfile = name ++ ".hs"
@@ -106,50 +106,77 @@ main= do
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ edited:exampleList
 
-      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
---      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
           case r of
               True -> do
-               wraw $ executeEmbed name
-               notValid $ do
-                let html= name ++ ".html"
-                p $  b "compilation sucessful! "
-                a ! href (fromString $ "/exec/"++ name ++ ".html" ) $ "execute full page"
+               let html= name ++ ".html"
+               when (example /= name) $ wraw $ do
+                  script $ "var elem=document.getElementById('exec');\
+                           \elem.parentNode.removeChild(elem);"
+                  executeEmbed html
+               stop
  
-              False ->  notValid $ errorEmbed err
+              False -> notValid $ do
+                 script $ "var elem=document.getElementById('exec');\
+                           \elem.parentNode.removeChild(elem);"
+
+                 errorEmbed err
 
       <|> p <<< wlink () "home"
 
 
 serveOutputRest= do
-    mfile <- getRestParam
+    mfile <- getPath []
     case mfile of
-       Just file -> serveOutput file
-       _ -> wraw $ b  "not found"
+       "" -> wraw $ b  "not found"
+       file -> serveOutput file
+
+    where
+    getPath segs= do
+      mseg <- getRestParam
+      case mseg of
+        Nothing  -> return segs
+        Just seg -> getPath (segs++"/"++seg)
+
 
 serveOutput name= do
     let file = projects ++ name
+        ext= reverse. takeWhile (/='.') $  reverse file
     content <- liftIO $ B.readFile file
-    resetCachePolicy
-    setHttpHeader  "Content-Type" "text/html"
+
+    setHttpHeader "Content-Type" $ case lookup ext mimeTable of
+            Just mime -> mime
+            Nothing -> "text/plain"
     t <- liftIO $ getModificationTime file
     etag  . SB.pack $ show t
     maxAge 3600
     rawSend content
 
-
-
+executeEmbed "none.html"= mempty
 executeEmbed name=
-  iframe ! At.style "position:absolute;left:50%;top:0%;width:50%;height:100%"
-         ! src (fromString $ "/exec/"++ name ++ ".html" )
+ div ! At.style "position:fixed;left:50%;top:0%;width:50%;height:100%" $ do
+  button ! At.id "hide" ! onclick "var el= document.getElementById('exec');\
+                     \var st= el.style.visibility;\
+                     \el.style.visibility= st=='hidden'? 'visible':'hidden' ;\
+                     \document.getElementById('editor').style.width=st=='hidden'?'50%':'100%';"
+         $ "hide/show"
+  button ! onclick "document.getElementById('exec').src=document.getElementById('exec').src;" $ "reload"
+
+  a ! href (fromString $ "/exec/"++ name ) $ "execute full page"
+
+  iframe ! At.id "exec"
+         ! At.style "position:relative;left:0%;top:0%;width:100%;height:100%"
+         ! src (fromString $ "/exec/"++ name)
          $ mempty
 
+
 errorEmbed err=
-  div    ! At.style "position:absolute;left:50%;top:0%;width:50%;height:100%"
+  div    ! At.style "position:fixed;left:50%;top:10%;width:50%;height:100%"
          $  pre $ fromStr err
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
@@ -177,19 +204,62 @@ showExcerpt e= do
 
      p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name
-        **>  " " ++>  do wlink ("edit" :: String) "edit"
-                         return name'
+        **>  " " ++>  maybeEdit e name'
 
         <|>  " " ++>  do wlink ("delete" :: String) "delete" <++ br
                          deletef name')
 
  where
- maybeExecute compiled name= when compiled $ do
-               wlink ("execute" :: String) "execute"
-               serveOutput $ name ++ ".html"
+ maybeExecute compiled name= when compiled $
+        wraw $ a ! href (fromString $ "/exec/"++ strip name ++ ".html" ) $ "execute full page"
+--               wlink ("execute" :: String) "execute"
+--               serveOutput $ name ++ ".html"
 
--- maybeEdit e= if
+ maybeEdit e name'= case Main.source e  of
+                 Git repo -> do
+                         wlink ("comp":: String) "compile/execute"
+                         `waction` const (comp e )
+                 _ ->  do
+                         wlink ("edit" :: String) "edit"
+                         return name'
 
+ comp e = page $ do
+     cont <- liftIO $ do
+      shell $ inDirectory projects $ genericRun "git" ["pull"] ""
+      shell $ inDirectory (projects ++ exname e)  $ genericRun "haste-inst" ["configure"] ""
+      shell $ inDirectory (projects ++ exname e)  $ genericRun "haste-inst" ["build"] ""
+      cabal <- findCabal $ (projects ++ exname e)
+      SB.readFile (projects ++ exname e ++"/"++ cabal)
+     let (r1,r2)=  SB.breakSubstring "main-is:" cont
+         file = SB.tail $ SB.takeWhile (/= '.') $ SB.drop 8 r2
+     let sdirs = getCabalVar "hs-source-dirs:" cont
+     let dirs = getDirs sdirs
+         f dir= do
+           fs <- getDirectoryContents $ projects ++ exname e ++"/"++dir       -- !> dir
+           return $ if not . null $ filter (== ( SB.unpack file++".html")) fs then Just dir else Nothing
+
+     [dir]<- liftIO $ return . catMaybes =<<  mapM f dirs                     -- !> show dirs
+
+     notValid $ a ! href (fromString $ "/exec/"++  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute full page"
+     where
+     getDirs cont | SB.null cont= []
+                  | otherwise=
+                      let (dir,rest) = SB.break sep . SB.dropWhile  sep $ cont
+                      in SB.unpack dir : getDirs rest
+                  where
+                  sep x= isSeparator x || x=='\r'
+
+     getCabalVar var cont=
+         let (r1,r2)=  SB.breakSubstring var cont
+         in SB.tail $ SB.takeWhile (/= '\n') $ SB.drop (SB.length var) r2
+
+     findCabal dir= do
+       fs <- getDirectoryContents dir
+       let r = L.filter (L.isSuffixOf ".cabal") fs
+       case r of
+         [f] -> return f
+         [] -> error $ exname e ++": cabal file not found"
+         _  -> error $ exname e ++": duplicate cabal file"
 
  deletef fil  = liftIO $ do
    removeFile $ projects ++ fil
@@ -236,7 +306,8 @@ acedit = [shamlet|
         var newHeight =
                   editor.getSession().getScreenLength()
                   * editor.renderer.lineHeight
-                  + editor.renderer.scrollBar.getWidth();
+                  + editor.renderer.scrollBar.getWidth()+ 100;
+
 
         document.getElementById("editor").style.height= newHeight.toString() + "px";
         editor.resize();

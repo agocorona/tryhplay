@@ -1,5 +1,3 @@
--- many of the small examples togeter
-
 {-# LANGUAGE  DeriveDataTypeable #-}
 module Main where
 import Haste
@@ -56,7 +54,6 @@ main= runBody $ do  -- PerchM monad
 -- and the <<< combinator simply encloses a widget within a HTML tag.
 -- ++> prepend HTML to a widget
 -- <++ postpend it
-
 
 
 sumTwo :: Widget ()
@@ -259,7 +256,6 @@ buttons= p "Different input elements:" ++> checkButton
 
     select= do
        r <- getSelect (   setOption "red"   (fromStr "red")  
-
                       <|> setOption "green" (fromStr "green")
                       <|> setOption "blue"  (fromStr "blue"))
               `fire` OnClick
@@ -279,6 +275,8 @@ formWidget=  center <<< do -- PerchM monad
       (n,s) <- (,) <$> p << "Who are you? "
                    ++> getString Nothing  getString Nothing  getRadio[radiob "work?",radiob "study?"] <++ br
 
+      flag <- b << "Do you " ++> getRadio[radiob "work?",radiob "study?"] <++ br
+      
       r<- case flag of
          "work?" -> Left  <$> b << "do you enjoy your work? "
                               ++> getBool True "yes" "no"

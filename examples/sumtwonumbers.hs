@@ -1,5 +1,4 @@
 -- sum two numbers
--- line two
 
 import Haste.HPlay.View
 import Control.Applicative
@@ -17,4 +16,4 @@ sumTwo = p  "This widget sum two numbers and append the result. Using applicativ
      p <<< fromStr "result: " ++>  b (show r) ++> return())
 
   where
-  less3 x= if x < 3 then return Nothing else  return . Just $ b " no more than 2 please"
+  less3 x= if x < 10 then return Nothing else  return . Just $ b " no more than 2 please"

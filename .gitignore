@@ -2,7 +2,10 @@ Demos/old-trash
 Test
 errlog
 .tcachedata
+<<<<<<< HEAD
 .anvil
+=======
+>>>>>>> 39b0f622bc0336e6a912f95d4930a0b8e47ef75a
 .cabal-sandbox
 cabal.sandbox
 favicon

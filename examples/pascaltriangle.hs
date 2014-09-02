@@ -4,10 +4,12 @@ import Haste.HPlay.View
 import Control.Applicative
 import Data.Monoid
 
-main= runBody $ showpascal 10
+main= runBody $ showpascal 
 
 pascal = iterate (\row -> zipWith (+) ([0] ++ row) (row ++ [0])) [1] :: [[Int]]
 
-showpascal n= p << ("Show " ++ show n ++ " rows of the Pascal triangle ")
-   ++> mconcat[p ! style "text-align:center" $ row | row <- take n pascal]
-   ++> empty   -- the applicative empty === noWidget
+showpascal =do
+ n <- getInt Nothing `fire` OnKeyUp <|> return 10
+ wraw $ do
+   p << ("Show " ++ show n ++ " rows of the Pascal triangle ")
+   mconcat[p ! style "text-align:center" $ row | row <- take n pascal]
