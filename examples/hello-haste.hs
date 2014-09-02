@@ -6,7 +6,7 @@ import Haste.Foreign
 import Haste.Prim
 
 main = do
-  body <- getBody
+  body <- documentBody 
   e <- newElem "div"
   name <- prompt "Dearest user, please tell me your name"
   text <- newTextElem  $ "Hello " ++ name

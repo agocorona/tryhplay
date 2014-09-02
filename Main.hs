@@ -5,7 +5,7 @@ import MFlow.Wai.Blaze.Html.All
 import MFlow (mimeTable)
 import Haste.Compiler
 import Data.Default
-import Prelude hiding (id,div,head)
+import Prelude hiding (id,div,head,span)
 import qualified Data.List as L
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -21,6 +21,7 @@ import qualified Data.Text as T
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
+import qualified Text.Blaze.Html5 as El 
 import qualified Data.Text.Lazy as TL
 import Control.Monad
 import Control.Shell
@@ -71,14 +72,16 @@ main= do
           wraw $ do
             h1 $ do
                 "Try "
-                a ! href "//github.com/agocorona/playground" $ "Playground"
-            p $ "The haskell client-side framework."
-            p $ "Create, compile to HTML+JavaScript and execute your programs in the browser"
-            h2 "you can use one of these examples "
+                a ! href "http:/haste-lang.org" $ "Haste"
+                " & "
+                a ! href "//github.com/agocorona/playground" $ "HPlayground"
+                " client-side framework."
+            p $ "Create, compile to HTML+JavaScript and execute your Haskell programs in the browser"
 
-          firstOf[handle e | e <- exampleList]
-              <|> h2 <<< wlink "none"  "or create a new program"
-              <|> h2 <<< (wlink ("git" :: String) "Compile a Haste/Hplayground project from a Git repository" `waction` fromGit)
+          h2 <<< wlink "none"  "Create a new program"
+            <|> h2 <<< (wlink ("git" :: String) "Compile a Haste/Hplayground project from a Git repository" `waction` fromGit)
+            <|> h2 "Or you can modify one of these examples "
+            ++> firstOf[handle e | e <- exampleList]
 
 
     if example== "noedit" then return () else do
@@ -106,9 +109,9 @@ main= do
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ edited:exampleList
 
-      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
+--      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
 --      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
---      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
+      r <- liftIO . shell $ inDirectory projects $ genericRun "hastec" [hsfile,"--output-html"] ""
       case r of
         Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
         Right (r,out,err) ->
@@ -189,7 +192,11 @@ handle :: Example -> View Html IO String
 handle e= do
  let name'= exname e
 
- (wlink name' << name' <++ br) `wcallback`  const (showExcerpt e)
+ (wlink name' << name' <++ firstLine e) `wcallback`  const (showExcerpt e)
+
+firstLine e=do
+  div ! At.style "margin-left:5%" $ toHtml $ L.takeWhile (/='\n') $ desc e
+  br
 
 showExcerpt e= do
      let name'= exname e
