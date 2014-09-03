@@ -218,7 +218,7 @@ showExcerpt e= do
         **>  " | " ++>  maybeEdit e name' <++ " | "
 
         <|>  " " ++>  do wlink ("delete" :: String) "delete" <! noAutoRefresh <++ br
-                         deletef name')
+                         deletef e)
 
  where
  maybeExecute compiled name= when compiled $
@@ -289,12 +289,16 @@ showExcerpt e= do
          [] -> error $ exname e ++": cabal file not found"
          _  -> error $ exname e ++": duplicate cabal file"
 
- deletef fil  = liftIO $ do
-   removeFile $ projects ++ fil
+ deletef e  = liftIO $ do
+   let fil= exname e
+
    liftIO $ atomically $ do
      Examples exampleList <- readDBRef examples !> "delete"
                       `onNothing` unsafeIOToSTM initExamples
      writeDBRef examples . Examples $ L.delete (Example fil undefined Local) exampleList
+   case Main.source e of
+     Git _ -> removeDirectoryRecursive  $ projects ++ fil
+     _     -> removeFile $ projects ++ fil
    return "noedit"
 
 
