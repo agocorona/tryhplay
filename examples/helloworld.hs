@@ -1,3 +1,5 @@
+-- The hello world program using hplayground
+
 import Haste.HPlay.View
 import Control.Applicative
 

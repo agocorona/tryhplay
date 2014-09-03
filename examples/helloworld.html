@@ -32,7 +32,10 @@ function A(f, args) {
     // results in non-functions getting applied, so we have to deal with
     // it.
     if(!(f instanceof Function)) {
-        return f;
+        f = B(f);
+        if(!(f instanceof Function)) {
+            return f;
+        }
     }
 
     if(f.arity === undefined) {
@@ -73,6 +76,16 @@ function E(t) {
     } else {
         return t;
     }
+}
+
+/* Bounce
+   Bonuce on a trampoline for as long as we get a function back.
+*/
+function B(f) {
+    while(f instanceof F) {
+        f = f.f();
+    }
+    return f;
 }
 
 // Export Haste, A and E. Haste because we need to preserve exports, A and E
@@ -282,8 +295,6 @@ function jsCatch(act, handler) {
     }
 }
 
-var coercionToken = undefined;
-
 /* Haste represents constructors internally using 1 for the first constructor,
    2 for the second, etc.
    However, dataToTag should use 0, 1, 2, etc. Also, booleans might be unboxed.
@@ -369,8 +380,8 @@ function jsGetMouseCoords(e) {
 	posy = e.clientY + document.body.scrollTop
 	    + document.documentElement.scrollTop;
     }
-    return [posx - (e.target.offsetLeft || 0),
-	    posy - (e.target.offsetTop || 0)];
+    return [posx - (e.currentTarget.offsetLeft || 0),
+	    posy - (e.currentTarget.offsetTop || 0)];
 }
 
 function jsSetCB(elem, evt, cb) {
@@ -597,6 +608,8 @@ function toHS(obj) {
     case 'object':
         if(obj instanceof Array) {
             return [3, arr2lst_json(obj, 0)];
+        } else if (obj == null) {
+            return [5];
         } else {
             // Object type but not array - it's a dictionary.
             // The RFC doesn't say anything about the ordering of keys, but
@@ -642,7 +655,11 @@ function lst2arr(xs) {
 function ajaxReq(method, url, async, postdata, cb) {
     var xhr = new XMLHttpRequest();
     xhr.open(method, url, async);
-    xhr.setRequestHeader('Cache-control', 'no-cache');
+
+    if(method == "POST") {
+        xhr.setRequestHeader("Content-type",
+                             "application/x-www-form-urlencoded");
+    }
     xhr.onreadystatechange = function() {
         if(xhr.readyState == 4) {
             if(xhr.status == 200) {
@@ -1700,9 +1717,9 @@ function hs_plusInt64(x, y) {return x.add(y);}
 function hs_minusInt64(x, y) {return x.subtract(y);}
 function hs_timesInt64(x, y) {return x.multiply(y);}
 function hs_negateInt64(x) {return x.negate();}
-function hs_uncheckedIShiftL64(x, bits) {x.shiftLeft(bits);}
-function hs_uncheckedIShiftRA64(x, bits) {x.shiftRight(bits);}
-function hs_uncheckedIShiftRL64(x, bits) {x.shiftRightUnsigned(bits);}
+function hs_uncheckedIShiftL64(x, bits) {return x.shiftLeft(bits);}
+function hs_uncheckedIShiftRA64(x, bits) {return x.shiftRight(bits);}
+function hs_uncheckedIShiftRL64(x, bits) {return x.shiftRightUnsigned(bits);}
 function hs_intToInt64(x) {return new Long(x, 0);}
 function hs_int64ToInt(x) {return x.toInt();}
 
@@ -2135,5 +2152,5 @@ function jsMkStdin() {
     );
 }
 
-var _0=false,_1=new T(function(){return [0,"(function(e){return e.parentNode;})"];}),_2=function(_3){var _4=A(_3,[_]);return E(_4);},_5=function(_6){return _2(function(_){var _=0;return eval(E(_6)[1]);});},_7=new T(function(){return _5(_1);}),_8=[0,0],_9=[0],_a=function(_b,_){return _9;},_c=function(_){return _9;},_d=[0,_c,_a],_e=2,_f=[1],_g=[0],_h=[0,_g,_8,_e,_d,_0,_f],_i=function(_){var _=0,_j=newMVar(),_=putMVar(_j,_h);return [0,_j];},_k=new T(function(){return _2(_i);}),_l=function(_m,_n,_){var _o=E(_k)[1],_p=takeMVar(_o),_q=A(_m,[_p,_]),_r=E(_q),_s=E(_r[1]),_t=_s[1],_u=_s[2],_=putMVar(_o,new T(function(){var _v=E(_r[2]);return [0,_v[1],_v[2],_v[3],_v[4],_0,_v[6]];}));if(!E(E(_p)[5])){var _w=A(_t,[_n,_]);return _u;}else{var _x=A(_7,[E(E(_n)[1]),_]),_y=A(_t,[[0,_x],_]);return _u;}},_z=function(_A,_B,_){var _C=jsCreateTextNode(toJSStr(E(_A))),_D=jsAppendChild(_C,E(_B)[1]);return [0,_C];},_E=unCStr("hello world"),_F=function(_G,_){var _H=_z(_E,_G,_);return _G;},_I=[0,_F,_9],_J=function(_K,_){return [0,_I,_K];},_L=new T(function(){return [0,"(function(){return document.body;})"];}),_M=new T(function(){return _5(_L);}),_N=function(_){var _O=A(_M,[_]);return _l(_J,[0,_O],_);},_P=function(_){return _N(_);};
-var hasteMain = function() {A(_P, [0]);};window.onload = hasteMain;</script></head><body></body></html>
+var _0=false,_1=new T(function(){return [0,"(function(e){return e.parentNode;})"];}),_2=function(_3){var _4=B(A(_3,[_])),_5=_4;return E(_5);},_6=function(_7){return new F(function(){return _2(function(_){var _=0;return new F(function(){return eval(E(_7)[1]);});});});},_8=new T(function(){return B(_6(_1));}),_9=[0,0],_a=[0],_b=function(_c,_){return _a;},_d=function(_){return _a;},_e=[0,_d,_b],_f=2,_g=[1],_h=[0],_i=[0,_h,_9,_f,_e,_0,_g],_j=function(_){var _=0,_k=newMVar(),_l=_k,_=putMVar(_l,_i);return [0,_l];},_m=new T(function(){return B(_2(_j));}),_n=function(_o,_p,_){var _q=E(_m)[1],_r=takeMVar(_q),_s=_r,_t=B(A(_o,[_s,_])),_u=_t,_v=E(_u),_w=E(_v[1]),_x=_w[1],_y=_w[2],_=putMVar(_q,new T(function(){var _z=E(_v[2]);return [0,_z[1],_z[2],_z[3],_z[4],_0,_z[6]];}));if(!E(E(_s)[5])){var _A=B(A(_x,[_p,_])),_B=_A;return _y;}else{var _C=B(A(_8,[E(E(_p)[1]),_])),_D=_C,_E=B(A(_x,[[0,_D],_])),_F=_E;return _y;}},_G=function(_H,_I,_){var _J=jsCreateTextNode(toJSStr(E(_H))),_K=_J,_L=jsAppendChild(_K,E(_I)[1]);return [0,_K];},_M=new T(function(){return B(unCStr("hello world"));}),_N=function(_O,_){var _P=B(_G(_M,_O,_)),_Q=_P;return _O;},_R=[0,_N,_a],_S=function(_T,_){return [0,_R,_T];},_U=new T(function(){return [0,"(function(){return document.body;})"];}),_V=new T(function(){return B(_6(_U));}),_W=function(_){var _X=B(A(_V,[_])),_Y=_X;return new F(function(){return _n(_S,[0,_Y],_);});},_Z=function(_){return new F(function(){return _W(_);});};
+var hasteMain = function() {B(A(_Z, [0]));};window.onload = hasteMain;</script></head><body></body></html>

@@ -191,15 +191,16 @@ strip name'=
   in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
 handle :: Example -> View Html IO String
-handle e= do
+handle e= autoRefresh $ do
  let name'= exname e
 
  (wlink name' << name' <++ firstLine e) `wcallback`  const (showExcerpt e)
 
 firstLine e=do
-  div ! At.style "margin-left:5%" $ toHtml $ L.takeWhile (/='\n') $ desc e
-  ".."
-  br
+  div ! At.style "margin-left:5%" $ do
+      toHtml $ L.takeWhile (/='\n') $ desc e
+      "..."
+
 
 showExcerpt e= do
      let name'= exname e
@@ -214,45 +215,60 @@ showExcerpt e= do
 
      p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled name
-        **>  " " ++>  maybeEdit e name'
+        **>  " | " ++>  maybeEdit e name' <++ " | "
 
-        <|>  " " ++>  do wlink ("delete" :: String) "delete" <++ br
+        <|>  " " ++>  do wlink ("delete" :: String) "delete" <! noAutoRefresh <++ br
                          deletef name')
 
  where
  maybeExecute compiled name= when compiled $
-        wraw $ a ! href (fromString $ "/exec/"++ strip name ++ ".html" ) $ "execute full page"
+        wraw $ a ! href (fromString $ "/exec/"++ strip name ++ ".html" ) $ "execute alone"
 --               wlink ("execute" :: String) "execute"
 --               serveOutput $ name ++ ".html"
 
  maybeEdit e name'= case Main.source e  of
                  Git repo -> do
-                         wlink ("comp":: String) "compile/execute"
+                         wlink ("comp":: String) "actualize/compile/execute" <! noAutoRefresh
                          `waction` const (comp e )
                  _ ->  do
-                         wlink ("edit" :: String) " edit & compile & execute "
+                         wlink ("edit" :: String) " edit & compile & execute " <! noAutoRefresh
                          return name'
 
  comp e = page $ do
-     cont <- liftIO $ do
-      git <- liftIO $ findExecutable "git" `onNothing` error "git not foound"
-      shell $ inDirectory projects $ genericRun git ["pull"] ""
-      hasteInst <- liftIO $ findExecutable "haste-inst" `onNothing` error "haste-inst not found"
-      shell $ inDirectory (projects ++ exname e)  $ genericRun hasteInst ["configure"] ""
-      shell $ inDirectory (projects ++ exname e)  $ genericRun hasteInst ["build"] ""
-      cabal <- findCabal $ (projects ++ exname e)
-      SB.readFile (projects ++ exname e ++"/"++ cabal)
-     let (r1,r2)=  SB.breakSubstring "main-is:" cont
-         file = SB.tail $ SB.takeWhile (/= '.') $ SB.drop 8 r2
-     let sdirs = getCabalVar "hs-source-dirs:" cont
-     let dirs = getDirs sdirs
-         f dir= do
-           fs <- getDirectoryContents $ projects ++ exname e ++"/"++dir       -- !> dir
-           return $ if not . null $ filter (== ( SB.unpack file++".html")) fs then Just dir else Nothing
+     mcabalCont <- liftIO $ do
+          git <- findExecutable "git" `onNothing` error "git not foound"
+          hasteInst <- findExecutable "haste-inst" `onNothing` error "haste-inst not found"
+          r <- shell $ inDirectory projects $ do
+                  genericRun git ["pull"] ""
+                  inDirectory (exname e) $ do
+                        genericRun hasteInst ["configure"] ""
+                        genericRun hasteInst ["build"] ""
+          case r of
+            Left errs -> return $ Left   errs
+            Right (r,out,err) -> do
+              case r of
+                False -> return $ Left (out ++ err)
+                True -> do
+                   cabal <- findCabal $ (projects ++ exname e)
+                   r <- SB.readFile (projects ++ exname e ++"/"++ cabal)
+                   return $ Right r
+     case mcabalCont of
+      Left errs -> pre << errs ++> empty
+      Right cabalCont -> do
+         let (r1,r2)=  SB.breakSubstring "main-is:" cabalCont
+             file = SB.tail $ SB.takeWhile (/= '.') $ SB.drop 8 r2
+         let sdirs = getCabalVar "hs-source-dirs:" cabalCont
+         let dirs = getDirs sdirs
+             f dir= do
+               fs <- getDirectoryContents $ projects ++ exname e ++"/"++dir       -- !> dir
+               return $ if not . null $ filter (== ( SB.unpack file++".html")) fs then Just dir else Nothing
 
-     [dir]<- liftIO $ return . catMaybes =<<  mapM f dirs                     -- !> show dirs
+         [dir]<- liftIO $ return . catMaybes =<<  mapM f dirs                     -- !> show dirs
 
-     notValid $ a ! href (fromString $ "/exec/"++  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute code page"
+         notValid $ do
+           "actualized and compiled "
+           a ! href (fromString $ "/exec/"++  exname e ++ "/"
+              ++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute it"
      where
      getDirs cont | SB.null cont= []
                   | otherwise=
@@ -284,13 +300,22 @@ showExcerpt e= do
 
 fromGit _ = ask $ do
     url <- getString Nothing <![("size","80"),("placeholder","URL of the git repository")]
-    liftIO $ atomically $ do
-        Examples exampleList <- readDBRef examples
-                      `onNothing` unsafeIOToSTM initExamples
-        let edited = Example (reverse . takeWhile (/='/')$ reverse url) url (Git url)
-        writeDBRef examples . Examples . L.nub $ edited:exampleList
+           <** submitButton "import"
     git <- liftIO $ findExecutable "git" `onNothing` error "git not foound"
-    liftIO . shell $ inDirectory projects $ genericRun git ["clone", url] ""
+    r <- liftIO . shell $ inDirectory projects $ genericRun git ["clone", url] ""
+    case r of
+        Left errs ->   p << errs ++> empty
+        Right (r,out,err) ->
+          case r of
+              False ->  p << (out ++ err) ++> empty
+              True -> do
+                 liftIO $ atomically $ do
+                    Examples exampleList <- readDBRef examples
+                                  `onNothing` unsafeIOToSTM initExamples
+                    let edited = Example (reverse . takeWhile (/='/')$ reverse url) url (Git url)
+                    writeDBRef examples . Examples . L.nub $ edited:exampleList
+
+    p "imported. "++> wlink () "Press here to continue"
     return "noedit"
 
 

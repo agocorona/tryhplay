@@ -1,31 +1,15 @@
-<<<<<<< HEAD
+
 tryhplay
 ========
 
 Compile and run hplayground programs.
-=======
-hp-todo
-=======
 
-the [todoMVC](todomvc.com) application using the hplayground client framework.
+[Running here](http://tryplayg.herokuapp.com)
 
-[See it working](http://mflowdemo.herokuapp.com/todo.html)
+The changes are erased by heroku from time to time.
+Run the application full page and download the HTML of your program to
+run it locally or to re-distribute it.
 
-Status
-------
-A few things remaining.
+https://travis-ci.org/agocorona/tryhplay/builds
 
-How to
-------
-Install [haskell, haste and hplayground](https://github.com/agocorona/hplayground)
-
-clone hplay-todo
-
-      > git clone http://github.com/agocorona/hplay-todo
-
-build the Html
-
-      > cd src
-      > hastec todo.hs --output-html
-
->>>>>>> 39b0f622bc0336e6a912f95d4930a0b8e47ef75a
+heroku config:set PATH=/app/ghc/bin:/app/.cabal/bin:/app/bin:/app/node_modules/.bin:node_modules/.bin:/app/bin:/app/node_modules/.bin:/usr/local/bin:/usr/bin:/bin --app tryplayg
