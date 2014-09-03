@@ -90,7 +90,8 @@ main= do
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r)<- (wform  $
                    (,) <$> getString (Just example) <! [("placeholder","name")]
-                               <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
+                       <++ (a ! href "/" $ " home")
+                       <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
                     <++ acedit
                     <** br
                     ++> submitButton "save & compile"
@@ -131,7 +132,7 @@ main= do
 
                  errorEmbed err
 
-      <|> p <<< wlink () "home"
+      <++ (p $ a ! href "/" $ "home")
 
 
 serveOutputRest= do
@@ -174,7 +175,7 @@ executeEmbed name=
   a ! href (fromString $ "/exec/"++ name ) $ "execute full page"
 
   iframe ! At.id "exec"
-         ! At.style "position:relative;left:0%;top:0%;width:100%;height:100%"
+         ! At.style "position:relative;left:0%;top:10px;width:100%;height:100%"
          ! src (fromString $ "/exec/"++ name)
          $ mempty
 
@@ -197,6 +198,7 @@ handle e= do
 
 firstLine e=do
   div ! At.style "margin-left:5%" $ toHtml $ L.takeWhile (/='\n') $ desc e
+  ".."
   br
 
 showExcerpt e= do
@@ -228,7 +230,7 @@ showExcerpt e= do
                          wlink ("comp":: String) "compile/execute"
                          `waction` const (comp e )
                  _ ->  do
-                         wlink ("edit" :: String) "edit"
+                         wlink ("edit" :: String) " edit & compile & execute "
                          return name'
 
  comp e = page $ do
@@ -250,7 +252,7 @@ showExcerpt e= do
 
      [dir]<- liftIO $ return . catMaybes =<<  mapM f dirs                     -- !> show dirs
 
-     notValid $ a ! href (fromString $ "/exec/"++  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute full page"
+     notValid $ a ! href (fromString $ "/exec/"++  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute code page"
      where
      getDirs cont | SB.null cont= []
                   | otherwise=
