@@ -2,7 +2,8 @@
 tryhplay
 ========
 
-Compile and run Haste and hplayground programs. It is a minimal IDE with edit-compile-run
+Compile and run Haste and hplayground programs.
+It is a minimal IDE with edit-compile-run
 capabilities. Additionally it can compile and run git project.
 
 ghc, haste and hplayground (and perch) are preinstalled, but it can also run any
@@ -16,6 +17,10 @@ Haste project. Since it uses haste-inst, it can install any dependency.
 The changes are erased by heroku from time to time.
 To save the generated HTML+Javascript,tun the application full page and download the HTML. That
 way you can redistribute it, run locally in your phone etc.
+
+To see a typical example of Haste git project that tryhplay can compile and run, see the [todo](https://github.com/agocorona/hplay-todo) project
+
+This is a very early version, so it will have a lot of bugs.
 
 Installation
 ============
@@ -51,14 +56,16 @@ Finally set the PATH environment variable:
 
        > heroku config:set PATH=/app/ghc/bin:/app/.cabal/bin:/app/bin:/app/node_modules/.bin:node_modules/.bin:/app/bin:/app/node_modules/.bin:/usr/local/bin:/usr/bin:/bin --app tryplayg
 
-add
+add:
+
          --app yourinstance
 
 
 to all heroku commands if you are not in the folder where the instance was created.
 
 
-Alternatively, after installing anvil, you can build and release everithing from scratch:
+Alternatively, after installing anvil, you can build and release everithing from scratch.To do so
+in the tryhplay folder perform:
 
        > heroku build -r -b https://github.com/agocorona/heroku-buildpack-haste.git
 
