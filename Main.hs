@@ -17,12 +17,11 @@ import System.Directory
 import System.IO.Unsafe
 import qualified Data.ByteString.Lazy.Char8 as B
 import qualified Data.ByteString.Char8 as SB
-import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
 import qualified Text.Blaze.Html5 as El 
-import qualified Data.Text.Lazy as TL
 import Control.Monad
 import Control.Shell
 import Text.Hamlet
@@ -78,9 +77,9 @@ main= do
                 " client-side framework."
             p $ "Create, compile to HTML+JavaScript and execute your Haskell programs in the browser"
 
-          h2 <<< wlink "none"  "Create a new program"
-            <|> h2 <<< (wlink ("git" :: String) "Compile a Haste project from a Git repository" `waction` fromGit)
-            <|> h2 "Or you can modify one of these examples "
+          h3 <<< wlink "none"  "Create a new program"
+            <|> h3 <<< (wlink ("git" :: String) "Compile a Haste project from a Git repository" `waction` fromGit)
+            <|> h3 "Or you can modify one of these examples "
             ++> firstOf[handle e | e <- exampleList]
 
 
@@ -126,7 +125,7 @@ main= do
                   executeEmbed html
                stop
  
-              False -> notValid $ do
+              False -> stopAt $ do
                  script $ "var elem=document.getElementById('exec');\
                            \elem.parentNode.removeChild(elem);"
 
@@ -186,6 +185,8 @@ errorEmbed err=
 
 extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
+stopAt= notValid
+
 strip name'=
   let rname= reverse name'
   in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
@@ -205,38 +206,46 @@ firstLine e=do
 showExcerpt e= do
      let name'= exname e
          name = strip name'
-         html = projects ++ name ++ ".html"
+         html = case Main.source e of
+                   Git _ -> desc e
+                   _ -> name ++ ".html"
 
-     compiled <- liftIO $ doesFileExist html
+     compiled <- liftIO $ doesFileExist $ projects ++ html
      wraw $ do
            b  << name'
            ": "
-           mapM_ (\l -> p ! At.style "margin-left:5%" $ toHtml l) $ L.lines $ desc e
+           case Main.source e of
+            Git url -> p ! At.style "margin-left:5%"
+                         $ a ! class_ "_noAutoRefresh" ! target "_blank" ! href (fromString $ url) $ "see the Git repository for information"
+
+            _       -> mapM_ (\l -> p ! At.style "margin-left:5%"
+                         $ toHtml l) $ L.lines $ desc e
 
      p ! At.style "margin-left:5%"
-        <<< (maybeExecute compiled name
-        **>  " | " ++>  maybeEdit e name' <++ " | "
-
-        <|>  " " ++>  do wlink ("delete" :: String) "delete" <! noAutoRefresh <++ br
-                         deletef e)
+        <<< (maybeExecute compiled html
+        **> " | "
+        ++> maybeEdit e name'
+        <++ " | "
+        <|> " "
+        ++> do wlink ("delete" :: String) "delete" <! noAutoRefresh <++ br
+               deletef e)
 
  where
- maybeExecute compiled name= when compiled $
-        wraw $ a ! href (fromString $ "/exec/"++ strip name ++ ".html" ) $ "execute alone"
---               wlink ("execute" :: String) "execute"
---               serveOutput $ name ++ ".html"
+ maybeExecute compiled html= when compiled $
+        (stopAt $ a ! href (fromString $ "/exec/"++ html ) $ "execute alone") <! noAutoRefresh
+
 
  maybeEdit e name'= case Main.source e  of
                  Git repo -> do
-                         wlink ("comp":: String) "actualize/compile/execute" <! noAutoRefresh
-                         `waction` const (comp e )
+                         wlink ("comp":: String) "Actualize/compile/execute" <! noAutoRefresh
+                         `waction` const (page $ comp e )
                  _ ->  do
                          wlink ("edit" :: String) " edit & compile & execute " <! noAutoRefresh
                          return name'
 
- comp e = page $ do
+comp e = do
      mcabalCont <- liftIO $ do
-          git <- findExecutable "git" `onNothing` error "git not foound"
+          git <- findExecutable "git" `onNothing` error "git not found"
           hasteInst <- findExecutable "haste-inst" `onNothing` error "haste-inst not found"
           r <- shell $ inDirectory projects $ do
                   genericRun git ["pull"] ""
@@ -257,18 +266,26 @@ showExcerpt e= do
       Right cabalCont -> do
          let (r1,r2)=  SB.breakSubstring "main-is:" cabalCont
              file = SB.tail $ SB.takeWhile (/= '.') $ SB.drop 8 r2
-         let sdirs = getCabalVar "hs-source-dirs:" cabalCont
-         let dirs = getDirs sdirs
+             sdirs = getCabalVar "hs-source-dirs:" cabalCont
+             dirs = getDirs sdirs
              f dir= do
                fs <- getDirectoryContents $ projects ++ exname e ++"/"++dir       -- !> dir
                return $ if not . null $ filter (== ( SB.unpack file++".html")) fs then Just dir else Nothing
 
          [dir]<- liftIO $ return . catMaybes =<<  mapM f dirs                     -- !> show dirs
 
-         notValid $ do
-           "actualized and compiled "
-           a ! href (fromString $ "/exec/"++  exname e ++ "/"
-              ++ dir ++ "/"++  SB.unpack file ++ ".html" ) $ "execute it"
+         let html=  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html"
+         liftIO $ atomically $ do
+           Examples exampleList <- readDBRef examples !> "delete"
+                      `onNothing` unsafeIOToSTM initExamples
+                      
+
+           writeDBRef examples . Examples $ L.nubBy (\ x y -> exname x==exname y)
+                                          $ [e{Main.desc= html }] ++ exampleList
+
+         stopAt $ do
+           p "actualized and compiled "
+           a ! href (fromString $ "/exec/"++  html) $ "Run it"
      where
      getDirs cont | SB.null cont= []
                   | otherwise=
@@ -289,7 +306,7 @@ showExcerpt e= do
          [] -> error $ exname e ++": cabal file not found"
          _  -> error $ exname e ++": duplicate cabal file"
 
- deletef e  = liftIO $ do
+deletef e  = liftIO $ do
    let fil= exname e
 
    liftIO $ atomically $ do
@@ -305,20 +322,22 @@ showExcerpt e= do
 fromGit _ = ask $ do
     url <- getString Nothing <![("size","80"),("placeholder","URL of the git repository")]
            <** submitButton "import"
-    git <- liftIO $ findExecutable "git" `onNothing` error "git not foound"
+    git <- liftIO $ findExecutable "git" `onNothing` error "git not found"
     r <- liftIO . shell $ inDirectory projects $ genericRun git ["clone", url] ""
+    let urln= map (\c -> if c== '\\' then  '/' else c) url
+    let edited = Example (reverse . takeWhile (/='/')$ reverse urln) url (Git url)
     case r of
-        Left errs ->   p << errs ++> empty
+        Left errs ->   pre << errs ++> empty
         Right (r,out,err) ->
           case r of
-              False ->  p << (out ++ err) ++> empty
+              False ->  pre << (out ++ err) ++> empty
               True -> do
                  liftIO $ atomically $ do
                     Examples exampleList <- readDBRef examples
                                   `onNothing` unsafeIOToSTM initExamples
-                    let edited = Example (reverse . takeWhile (/='/')$ reverse url) url (Git url)
-                    writeDBRef examples . Examples . L.nub $ edited:exampleList
 
+                    writeDBRef examples . Examples . L.nub $ edited:exampleList
+    comp edited
     p "imported. "++> wlink () "Press here to continue"
     return "noedit"
 
