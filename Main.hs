@@ -71,7 +71,7 @@ main= do
           wraw $ do
             h1 $ do
                 "Try "
-                a ! href "http:/haste-lang.org" $ "Haste"
+                a ! href "//haste-lang.org" $ "Haste"
                 " & "
                 a ! href "//github.com/agocorona/playground" $ "HPlayground"
                 " client-side framework."
