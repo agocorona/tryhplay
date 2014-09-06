@@ -80,7 +80,7 @@ main= do
             p $ "Save your compliled program  (HTML+Javascript)  by downloading the HTML page\
                    \generated, which contains all the JScript necesary for running it locally"
             p $ b "Thanks to Anton Ekblad for his wonderful haste compiler"
-            p $ b "NOTE: this IDE does not execute Haste programs with a server side (using Haste.App)"
+            p $ b "NOTE: this IDE does not execute Haste programs with server side (using Haste.App)"
             p $ b "NOTE 2: From time to time Heroku reset the instance and erase your files"
           h3 <<< wlink "none"  "Create a new program"
             <|> h3 <<< (wlink ("git" :: String) "Compile a Haste project from a Git repository" `waction` fromGit)
