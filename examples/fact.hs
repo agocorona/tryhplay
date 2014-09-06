@@ -6,7 +6,7 @@ main = runBody $ do
 -- wraw: display raw HTML and return ()
    wraw $ p $ "enter the number"
    num <- inputInteger Nothing `fire` OnKeyUp
-   wraw $ p <<  show (fact num)
+   wraw $ p $  show (fact num)
 
 
 fact 0= 1

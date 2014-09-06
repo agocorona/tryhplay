@@ -77,19 +77,26 @@ main= do
                 " client-side framework."
             p $ "Create, compile to HTML+JavaScript and execute your Haskell programs in the browser"
 
+            p $ "Save your compliled program  (HTML+Javascript)  by downloading the HTML page\
+                   \generated, which contains all the JScript necesary for running it locally"
+            p $ b "Thanks to Anton Ekblad for his wonderful haste compiler"
+            p $ b "NOTE: this IDE does not execute Haste programs with a server side (using Haste.App)"
+            p $ b "NOTE 2: From time to time Heroku reset the instance and erase your files"
           h3 <<< wlink "none"  "Create a new program"
             <|> h3 <<< (wlink ("git" :: String) "Compile a Haste project from a Git repository" `waction` fromGit)
-            <|> h3 "Or you can modify one of these examples "
+            <|> h3 "Or you can modify and rename one of these examples:"
             ++> firstOf[handle e | e <- exampleList]
+
 
 
     if example== "noedit" then return () else do
      page $ do
-     
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r)<- (wform  $
-                   (,) <$> getString (Just example) <! [("placeholder","name")]
+                   (,) <$> "Please rename if you do major changes ->"
+                       ++> getString (Just example) <! [("placeholder","set name")]
                        <++ (a ! href "/" $ " home")
+                       
                        <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
                     <++ acedit
                     <** br
@@ -171,7 +178,7 @@ executeEmbed name=
          $ "hide/show"
   button ! onclick "document.getElementById('exec').src=document.getElementById('exec').src;" $ "reload"
 
-  a ! href (fromString $ "/exec/"++ name ) $ "execute full page"
+  a ! href (fromString $ "/exec/"++ name ) $ " execute full page"
 
   iframe ! At.id "exec"
          ! At.style "position:relative;left:0%;top:10px;width:100%;height:100%"
