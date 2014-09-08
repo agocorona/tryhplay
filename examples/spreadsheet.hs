@@ -1,5 +1,7 @@
 -- Not yet finished
 
+{-# LANGUAGE OverloadedStrings #-}
+
 import Haste.Foreign
 import Haste
 import Haste.HPlay.View
@@ -11,11 +13,11 @@ import Control.Monad.IO.Class
 import System.IO.Unsafe
 
 main= do
--- export "c" getCell
+ export "c" c
  runBody $ do
    wraw $ p << "spreadsheet" 
    ss <- rows `fire` OnKeyUp
-   let r =   Prelude.map (\exp ->  tojs ss exp)  ss
+   let r =   Prelude.map (\exp -> ueval exp)  ss
    -- let r = loeb $  Prelude.map (\exp -> (\exps ->ueval $ tojs exps exp) )  ss
    
    print r
@@ -26,9 +28,12 @@ main= do
   -- r <- liftIO $ evalFormula "with ({num: 2, i:3}){num*i}"
  
  where
+ c ::  [Double] -> Int -> Int -> IO Double
+ c rs x y =  return $ rs !! (x *2 + y)
+ 
  print = wraw . pre
- tojs :: [String] -> String -> String
- tojs xs exp= "with({"++tojs' 0 xs++"}){"++exp++"}"
+ --tojs :: [String] -> String -> String
+ --tojs xs exp= "with({"++tojs' 0 xs++"}){"++exp++"}"
    where 
    tojs' _ []= ""
    tojs' n (x:xs)='c': show (n `quot` 2)++ show (n `rem` 2)
@@ -39,13 +44,13 @@ main= do
 --   r  <- Cell.get entry >>= return . reverse
 --   revEntry .= r
 
-cell :: Int -> Int -> Cell String
+cell :: Int -> Int -> Cell Double
 cell x y=
   let ide= getId x y
   in boxCell ide 
 
-mkcell :: Int -> Int -> Widget [String]
-mkcell x y= mk (cell x y) (Just "0") >>= \x -> return [x]
+mkcell :: Int -> Int -> Widget [Double]
+mkcell x y= mk (cell x y) (Just 0) >>= \x -> return [x]
   
 
 evalFormula :: String  ->  IO String

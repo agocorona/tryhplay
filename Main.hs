@@ -190,7 +190,8 @@ executeEmbed name=
 
 
 errorEmbed err=
-  div    ! At.style "position:fixed;left:50%;top:10%;width:50%;height:100%"
+  div    ! At.id "exec"
+         ! At.style "position:fixed;left:50%;top:10%;width:50%;height:100%"
          $  pre $ fromStr err
 
 extractDes code=unlines $ map (drop 3) . takeWhile ("--" `L.isPrefixOf`) $ lines code
