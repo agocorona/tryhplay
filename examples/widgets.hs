@@ -6,7 +6,7 @@ import Data.Monoid
 
 main= runBody $ buttons <|> linksample
 
-linksample= br ++> wlink "Hey!" (toElem "This link say Hey!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
+linksample= br ++> wlink "Hi!" (toElem "This link say Hi!")`fire` OnClick >>= \r -> wraw( b (" returns "++ r))
 
 buttons= p "Different input elements:" ++> checkButton
                                        **> br ++> br

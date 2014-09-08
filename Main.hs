@@ -76,9 +76,11 @@ main= do
                 a ! href "//github.com/agocorona/playground" $ "HPlayground"
                 " client-side framework."
             p $ "Create, compile to HTML+JavaScript and execute your Haskell programs in the browser"
-
-            p $ "Save your compliled program  (HTML+Javascript)  by downloading the HTML page\
-                   \generated, which contains all the JScript necesary for running it locally"
+            p $ do
+              "Run this locally or create your own heroku instance: "
+              a ! href "//github.com/agocorona/tryhplay" $ "code & docs"
+            p $ "Save your compliled program  (HTML+Javascript)  by downloading the HTML generated page\
+                   \ , which contains all the JScript necesary for running it locally"
             p $ b "Thanks to Anton Ekblad for his wonderful haste compiler"
             p $ b "NOTE: this IDE does not execute Haste programs with server side (using Haste.App)"
             p $ b "NOTE 2: From time to time Heroku reset the instance and erase your files"
@@ -95,14 +97,15 @@ main= do
       (name',r)<- (wform  $
                    (,) <$> "Please rename if you do major changes ->"
                        ++> getString (Just example) <! [("placeholder","set name")]
+                       <*> (submitButton "save & compile"
                        <++ (a ! href "/" $ " home")
+                       **> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")])
+                       <++ acedit
+                       <** br
+                       ++> submitButton "save & compile"
+                       <++ br) <! [("onsubmit","return copyContent()")]
                        
-                       <*> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")]
-                    <++ acedit
-                    <** br
-                    ++> submitButton "save & compile"
-                    <++ br) <! [("onsubmit","return copyContent()")]
-                    <++ executeEmbed (strip example ++ ".html")
+                       <++ executeEmbed (strip example ++ ".html")
 
       let name= strip name'
           hsfile = name ++ ".hs"
@@ -190,7 +193,7 @@ errorEmbed err=
   div    ! At.style "position:fixed;left:50%;top:10%;width:50%;height:100%"
          $  pre $ fromStr err
 
-extractDes code=unlines $ map (drop 2) . takeWhile ("--" `L.isPrefixOf`) $ lines code
+extractDes code=unlines $ map (drop 3) . takeWhile ("--" `L.isPrefixOf`) $ lines code
 
 stopAt= notValid
 
@@ -199,16 +202,16 @@ strip name'=
   in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
 handle :: Example -> View Html IO String
-handle e= autoRefresh $ do
- let name'= exname e
-
- (wlink name' << name' <++ firstLine e) `wcallback`  const (showExcerpt e)
-
-firstLine e=do
-  div ! At.style "margin-left:5%" $ do
-      toHtml $ L.takeWhile (/='\n') $ desc e
-      "..."
-
+handle e= autoRefresh $ firstLine e `wcallback`  const (showExcerpt e)
+ where
+ firstLine :: Example -> View Html IO String
+ firstLine e=
+   let name'= exname e in do
+      wraw $ toHtml name'
+      div ! At.style "margin-left:5%" <<< do
+         pre <<< do
+            wraw << (L.take 80 (desc e) ++"...\n")
+            wlink name' "more"
 
 showExcerpt e= do
      let name'= exname e
@@ -225,8 +228,8 @@ showExcerpt e= do
             Git url -> p ! At.style "margin-left:5%"
                          $ a ! class_ "_noAutoRefresh" ! target "_blank" ! href (fromString $ url) $ "see the Git repository for information"
 
-            _       -> mapM_ (\l -> p ! At.style "margin-left:5%"
-                         $ toHtml l) $ L.lines $ desc e
+            _       -> div ! At.style "margin-left:5%" $ pre << desc e -- mapM_ (\l -> p ! At.style "margin-left:5%"
+                        -- $ pre $  toHtml l) $ L.lines $ desc e
 
      p ! At.style "margin-left:5%"
         <<< (maybeExecute compiled html
@@ -317,7 +320,7 @@ deletef e  = liftIO $ do
    let fil= exname e
 
    liftIO $ atomically $ do
-     Examples exampleList <- readDBRef examples !> "delete"
+     Examples exampleList <- readDBRef examples 
                       `onNothing` unsafeIOToSTM initExamples
      writeDBRef examples . Examples $ L.delete (Example fil undefined Local) exampleList
    case Main.source e of

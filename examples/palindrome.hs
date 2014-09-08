@@ -4,10 +4,11 @@ import Haste.HPlay.View
 import Haste.HPlay.Cell as Cell
 import Control.Applicative
 
-main= runBody $
- p << "To search palindromes: one box present the other's reversed. It is also\
-                 \ an example of cell usage" ++> do
- let entry= boxCell "entry" :: Cell String
+main= runBody $ do
+ wraw $ p << "To search palindromes: one box present the other's reversed. It is also\
+                 \ an example of cell usage" 
+ 
+ let entry   = boxCell "entry" :: Cell String
      revEntry= boxCell "revEntry"
 
  r <- center <<< ((mk entry    Nothing `fire` OnKeyUp >>= return . Left) <++ br <|>
