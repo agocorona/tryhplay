@@ -4,7 +4,8 @@ import Haste.HPlay.View
 import Prelude hiding(print)
 
 main= runBody $ do
-   name <- p "What is your name?" ++> getString Nothing `fire` OnKeyUp
+   print "What is your name?"
+   name <- getString Nothing `fire` OnKeyUp
    print $ "hello " ++ name ++"!"
    
 print= wraw . pre

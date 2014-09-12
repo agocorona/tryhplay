@@ -21,7 +21,7 @@ import qualified Data.Text.Lazy as TL
 import Data.Typeable
 import Data.Monoid
 import Text.Blaze.Html5.Attributes as At hiding (step,name)
-import qualified Text.Blaze.Html5 as El 
+import qualified Text.Blaze.Html5 as El
 import Control.Monad
 import Control.Shell
 import Text.Hamlet
@@ -104,7 +104,7 @@ main= do
                        <** br
                        ++> submitButton "save & compile"
                        <++ br) <! [("onsubmit","return copyContent()")]
-                       
+
                        <++ executeEmbed (strip example ++ ".html")
 
       let name= strip name'
@@ -134,7 +134,7 @@ main= do
                            \elem.parentNode.removeChild(elem);"
                   executeEmbed html
                stop
- 
+
               False -> stopAt $ do
                  script $ "var elem=document.getElementById('exec');\
                            \elem.parentNode.removeChild(elem);"
@@ -289,7 +289,7 @@ comp e = do
          liftIO $ atomically $ do
            Examples exampleList <- readDBRef examples !> "delete"
                       `onNothing` unsafeIOToSTM initExamples
-                      
+
 
            writeDBRef examples . Examples $ L.nubBy (\ x y -> exname x==exname y)
                                           $ [e{Main.desc= html }] ++ exampleList
@@ -321,7 +321,7 @@ deletef e  = liftIO $ do
    let fil= exname e
 
    liftIO $ atomically $ do
-     Examples exampleList <- readDBRef examples 
+     Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
      writeDBRef examples . Examples $ L.delete (Example fil undefined Local) exampleList
    case Main.source e of
