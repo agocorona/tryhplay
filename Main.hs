@@ -95,7 +95,8 @@ main= do
      page $ do
       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
       (name',r)<- (wform  $
-                   (,) <$> "Please rename if you do major changes ->"
+                   (,) <$> executeEmbed (strip example ++ ".html")
+                       ++> "Please rename if you do major changes ->"
                        ++> getString (Just example) <! [("placeholder","set name")]
                        <*> (submitButton "save & compile"
                        <++ (a ! href "/" $ " home")
@@ -105,7 +106,7 @@ main= do
                        ++> submitButton "save & compile"
                        <++ br) <! [("onsubmit","return copyContent()")]
 
-                       <++ executeEmbed (strip example ++ ".html")
+
 
       let name= strip name'
           hsfile = name ++ ".hs"

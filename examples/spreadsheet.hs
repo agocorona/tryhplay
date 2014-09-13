@@ -1,7 +1,19 @@
 -- Example of spreadsheet-like behaviour using loeb iteration
 -- http://blog.sigfpe.com/2006/11/from-l-theorem-to-spreadsheet.html
 -- with loop detection and resolution.
-
+--
+-- This program calculates speed, time and space. Each one depends on the other two
+-- Each cell has two values: his current entered value and the expression which 
+-- calculates it from other cell values/expressions. curcularity is permitted.
+--
+-- The Cell recalculation code uses the famous loeb expression (see the link below)
+-- But to speed up a little, in this case (Map String Float) is used instead of a list of floats
+-- Since loeb enters in a infinite loop when circular expressions are used, the
+-- program counts the loops and reduces complexity by progressively substituting
+-- formulas by cell values until the expression has no loops
+--
+-- This program is configured for inmediate recalculation, but that can be changed
+-- to allow the modification of more than one cell be
 
 {-# LANGUAGE   TypeSynonymInstances
              , FlexibleInstances
@@ -59,12 +71,9 @@ cell n= \vars -> case M.lookup n vars of
           writeIORef rtries  (tries+1)
           return exp
              
-       else  do
-          let err= "loop detected in cell: "++ n 
-                   ++ " please fix the error"
-          -- alert err
-          error err 
+       else  error n 
 
+circular n= "loop detected in cell: "++ n  ++ " please fix the error"
 
 printw :: ToElem a => a -> Widget ()
 printw = wraw . pre
@@ -107,13 +116,19 @@ calc= do
   toStrict xs = print xs >> return xs
   
   doit :: SomeException -> IO [(String,Float)]
-  doit _= do
+  doit e= do
     nvs <- readIORef rmodified
     exprs <- readIORef rexprs
-    let name= head $ M.keys exprs \\ M.keys nvs
-    v <- get $ boxCell name
-    writeIORef rmodified  $ M.insert name (const v) nvs
-    calc1
+    case  M.keys exprs \\ M.keys nvs of
+      [] -> do
+         let Just (ErrorCall n)= fromException e
+         let err= circular n
+         alert err
+         error err
+      (name:_) -> do
+         v <- get $ boxCell name
+         writeIORef rmodified  $ M.insert name (const v) nvs
+         calc1
 
 instance Show (Expr a) 
 
