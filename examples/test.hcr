@@ -1,0 +1,68 @@
+%module main:Main
+  main:Main.main :: ghczmprim:GHCziTypes.IO
+                    (base:DataziMaybe.Maybe ghczmprim:GHCziTuple.Z0T) =
+    base:GHCziBase.zd
+    @ (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.View
+       (hastezmperchzm0zi1zi0zi1:HasteziPerch.PerchM
+        ghczmprim:GHCziTuple.Z0T)
+       ghczmprim:GHCziTypes.IO
+       ghczmprim:GHCziTuple.Z0T)
+    @ (ghczmprim:GHCziTypes.IO
+       (base:DataziMaybe.Maybe ghczmprim:GHCziTuple.Z0T))
+    (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.runBody
+     @ ghczmprim:GHCziTuple.Z0T)
+    (base:GHCziBase.zgzg
+     @ (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.View
+        (hastezmperchzm0zi1zi0zi1:HasteziPerch.PerchM
+         ghczmprim:GHCziTuple.Z0T)
+        ghczmprim:GHCziTypes.IO)
+     hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.zdfMonadView
+     @ hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.EventData
+     @ ghczmprim:GHCziTuple.Z0T
+     (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.pass
+      @ (ghczmprim:GHCziTypes.Int ->
+         (ghczmprim:GHCziTuple.Z2T
+          ghczmprim:GHCziTypes.Int
+          ghczmprim:GHCziTypes.Int)
+         -> ghczmprim:GHCziTypes.IO ghczmprim:GHCziTuple.Z0T)
+      (hastezmperchzm0zi1zi0zi1:HasteziPerch.p
+       @ (ghczmprim:GHCziTypes.ZMZN ghczmprim:GHCziTypes.Char)
+       hastezmperchzm0zi1zi0zi1:HasteziPerch.zdfToElemZMZN
+       (ghczmprim:GHCziCString.unpackCStringzh
+        ("click "::ghczmprim:GHCziPrim.Addrzh)))
+      (hastezmcompilerzm0zi3:HasteziCallback.zdWOnClick
+       @ ghczmprim:GHCziTypes.IO))
+     (base:GHCziBase.zgzg
+      @ (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.View
+         (hastezmperchzm0zi1zi0zi1:HasteziPerch.PerchM
+          ghczmprim:GHCziTuple.Z0T)
+         ghczmprim:GHCziTypes.IO)
+      hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.zdfMonadView
+      @ hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.EventData
+      @ ghczmprim:GHCziTuple.Z0T
+      (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.pass
+       @ (ghczmprim:GHCziTypes.Int ->
+          (ghczmprim:GHCziTuple.Z2T
+           ghczmprim:GHCziTypes.Int
+           ghczmprim:GHCziTypes.Int)
+          -> ghczmprim:GHCziTypes.IO ghczmprim:GHCziTuple.Z0T)
+       (hastezmperchzm0zi1zi0zi1:HasteziPerch.p
+        @ (ghczmprim:GHCziTypes.ZMZN ghczmprim:GHCziTypes.Char)
+        hastezmperchzm0zi1zi0zi1:HasteziPerch.zdfToElemZMZN
+        (ghczmprim:GHCziCString.unpackCStringzh
+         ("click "::ghczmprim:GHCziPrim.Addrzh)))
+       (hastezmcompilerzm0zi3:HasteziCallback.zdWOnClick
+        @ ghczmprim:GHCziTypes.IO))
+      (hplaygroundzm0zi1zi0zi5:HasteziHPlayziView.wraw
+       @ (hastezmperchzm0zi1zi0zi1:HasteziPerch.PerchM
+          ghczmprim:GHCziTuple.Z0T)
+       @ ghczmprim:GHCziTypes.IO base:GHCziBase.zdfMonadIO
+       (hastezmperchzm0zi1zi0zi1:HasteziPerch.pre
+        @ (ghczmprim:GHCziTypes.ZMZN ghczmprim:GHCziTypes.Char)
+        hastezmperchzm0zi1zi0zi1:HasteziPerch.zdfToElemZMZN
+        (ghczmprim:GHCziCString.unpackCStringzh
+         ("hi"::ghczmprim:GHCziPrim.Addrzh))))));
+  main:ZCMain.main :: ghczmprim:GHCziTypes.IO
+                      (base:DataziMaybe.Maybe ghczmprim:GHCziTuple.Z0T) =
+    base:GHCziTopHandler.runMainIO
+    @ (base:DataziMaybe.Maybe ghczmprim:GHCziTuple.Z0T) main:Main.main;

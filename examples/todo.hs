@@ -132,16 +132,14 @@ todo = do
 
  newTodo= do
       let entry= boxCell "new-todo"
-      task <- mk entry Nothing `wake` OnKeyUp
+      task <- mk entry Nothing `wake` OnChange
                 ! atr "placeholder" "What needs to be done?"
                 ! atr "autofocus" ""
-      EventData evname evdata <- getEventData
-      when( evdata == Key 13) $ do
-         entry .= ""
-         idtask <- addTask task Active
-         Mode m <- getSData <|> return (Mode all)
-         when (m /= completed) $ at "todo-list" Prepend $ display idtask
-         itemsLeft
+      entry .= ""
+      idtask <- addTask task Active
+      Mode m <- getSData <|> return (Mode all)
+      when (m /= completed) $ at "todo-list" Prepend $ display idtask
+      itemsLeft
 
  display idtask =
    (li <<< ( toggleActive  **> destroy)) `wcallback` const (delTask idtask)

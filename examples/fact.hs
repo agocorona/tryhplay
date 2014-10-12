@@ -5,7 +5,7 @@ import Prelude hiding (print)
 
 main = runBody $ do
    print $ "enter the number"
-   num <- inputInteger Nothing `fire` OnKeyUp
+   num <- inputInteger Nothing `fire` OnChange
    print $ fact num 
 
 

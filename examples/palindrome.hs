@@ -11,14 +11,15 @@ main= runBody $ do
  let entry   = boxCell "entry" :: Cell String
      revEntry= boxCell "revEntry"
 
- r <- center <<< ((mk entry    Nothing `fire` OnKeyUp >>= return . Left) <++ br <|>
-                  (mk revEntry Nothing `fire` OnKeyUp >>= return . Right))
+ r <- center <<< ((mk entry    Nothing ! atr "size" "10" `fire` OnKeyUp >>= return . Left) <++ br <|>
+                  (mk revEntry Nothing ! atr "size" "10" `fire` OnKeyUp >>= return . Right))
 
+ -- a cell can be read anywere in the code with  Cell.get 
+ -- In this case the value is read directly from the expression.
+ 
  case r of
-  Left s  -> do
-   r  <- Cell.get entry >>= return . reverse
-   revEntry .= r
-  Right s -> do
-   r' <- Cell.get revEntry >>= return . reverse
-   entry .= r'
+    Left s  -> do
+        revEntry .= reverse s   
+    Right s -> do
+        entry .= reverse s
 

@@ -31,27 +31,35 @@ import Data.IORef
 import Debug.Trace
 import Control.Exception
 import Data.List
---(!>)= flip trace
+import Control.Monad
+import Data.Maybe
+(!>)= flip trace
 
-main= runBody $ do
-   printw ("calculate space, time and speed " :: String)
+main= runBody $   static $ do
+   wraw $ h1 $ ("calculate space, time and speed " :: String)
    printw ("Can change one of the cell and the other two will be recalculated"::String)
    pre <<< ("a car runs for" ++> space
-             **> " Kms\nduring" ++> time **> " Hours;\n"
-             ++> "His mean speed was" ++> speed <++ "Km/h")
+             **> " Kms during" ++> time **> " Hours;\n"
+             ++> "His mean speed was" ++> speed <++ "Km/h\n") 
+             
+--   (input ! atr "type" "submit" ! atr "value" "calc" ) `pass` OnClick
    calc
    where
-   space= mkcell "space" (Just 1) (cell "speed" * cell "time")  ! size "5"
-   time = mkcell "time"  (Just 3) (cell "space" / cell "speed") ! size "5"
-   speed= mkcell "speed" (Just 3) (cell "space" / cell "time")  ! size "5"
+   space= mkscell "space" (Just 1) ( scell "speed" * scell "time")  ! size "5"
+   time = mkscell "time"  (Just 1) (scell "space" / scell "speed") ! size "5"
+   speed= mkscell "speed" (Just 1) (scell "space" / scell "time")  ! size "5"
    
    size= atr "size"
-   
+
+-- <<< is the operator for enclosing a widget within a tag
+--     All the spreadsheet expression is enclosed within a 'pre' tag
+
 -- ++> HPlay operator for adding HTML to a widget
+
 -- **> HPlay operator to discard the output of the left widget and compose with the right one
 --     while presenting both left and right rendering composed
 
--- The recursive Cell DSL BELOW ------
+-- The recursive Cell calculation DSL BELOW ------
 -- This code will probably be addded to Haste.HPlay.Cell
 
 -- http://blog.sigfpe.com/2006/11/from-l-theorem-to-spreadsheet.html
@@ -60,7 +68,7 @@ loeb :: M.Map String (Expr a) -> M.Map String a
 loeb x = fmap (\a -> a (loeb  x)) x
 
 -- cell ::  Num a => String -> M.Map String a -> a
-cell n= \vars -> case M.lookup n vars of
+scell n= \vars -> case M.lookup n vars of
     Just exp -> inc n  exp 
     Nothing -> error $ "cell error in: "++n
   where
@@ -89,19 +97,40 @@ rexprs= unsafePerformIO $ newIORef M.empty
 rmodified :: IORef (M.Map String (Expr Float))
 rmodified= unsafePerformIO $ newIORef M.empty
 
-mkcell :: String -> Maybe Float -> Expr Float -> Widget ()
-mkcell name val expr=  do
+mkscell :: String -> Maybe Float -> Expr Float -> Widget ()
+mkscell name val expr=  static $ do
    liftIO $ do
      exprs <- readIORef rexprs
      writeIORef rexprs $ M.insert name expr exprs
-   r <- mk (boxCell name) val  `fire` OnChange 
-   liftIO $ writeIORef rmodified  $ M.singleton  name $ const r 
+     return exprs
+   r <- mk (boxCell name) val `fire` OnChange
+   liftIO $ do
+        mod <- readIORef rmodified !> name 
+        writeIORef rmodified  $ M.insert  name (const r)  mod 
+ `continuePerch`  name
+ 
+   
+
+
+continuePerch :: Widget a -> ElemID -> Widget a
+continuePerch w eid= View $ do
+  FormElm f mx <- runView w
+  return $ FormElm (c f) mx
+  where
+  c f =Perch $ \e' ->  do
+     build f e'
+     elemid eid
+     
+  elemid id= elemById id >>= return . fromJust
+
 
 calc :: Widget ()
 calc= do
-  values <-liftIO $ handle doit calc1
-
-  mapM_ (\(n,v) -> boxCell n .= v)  values 
+  nvs <- liftIO $ readIORef rmodified
+  when (not $ M.null nvs) $ do
+    values <-liftIO $ handle doit calc1
+    mapM_ (\(n,v) -> boxCell n .= v)  values 
+  liftIO $ writeIORef rmodified M.empty
   where
   calc1  :: IO [(String,Float)]
   calc1=do 
@@ -126,9 +155,12 @@ calc= do
          alert err
          error err
       (name:_) -> do
-         v <- get $ boxCell name
-         writeIORef rmodified  $ M.insert name (const v) nvs
-         calc1
+         mv <- getter $ boxCell name
+         case mv of
+            Nothing -> return []
+            Just v -> do
+                writeIORef rmodified  $ M.insert name (const v) nvs
+                calc1
 
 instance Show (Expr a) 
 

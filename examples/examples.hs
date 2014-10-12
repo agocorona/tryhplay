@@ -165,7 +165,7 @@ drawcanvas=
       \ using javascript expressions"  ++>
 
  (center <<< do
-      let initial= "x*x+x+10;"
+      let initial= "x*x+x+10"
           sanitize str= if isInfixOf "alert" str then initial else str
       expr <- inputString (Just initial) `fire` OnKeyUp <++ br <|> return initial
       wraw $ canvas ! id "canvas"  $ noHtml
@@ -277,6 +277,7 @@ formWidget=  center <<< do -- PerchM monad
       (n,s) <- (,) <$> p << "Who are you? "
                    ++> getString Nothing  
                    <*> getString Nothing  <++ br
+                   <** submitButton "ok" `fire` OnClick <++ br
 
       flag <- b << "Do you " ++> getRadio[radiob "work?",radiob "study?"] <++ br
       

@@ -25,11 +25,17 @@ import qualified Text.Blaze.Html5 as El
 import Control.Monad
 import Control.Shell
 import Text.Hamlet
-import Debug.Trace
+
 import Data.Maybe
 import Data.Char
 
+import Haste.App hiding (fromString)
+import qualified Haste.App.Concurrent as H
+import qualified Control.Concurrent as C
+
+import Debug.Trace
 (!>)= flip trace
+
 
 projects= "./examples/"
 
@@ -60,12 +66,22 @@ initExamples= do
 
 
 main= do
+  C.forkOS $ runApp (mkConfig "ws://localhost:24601" 24601) $ do
+    remoteMsg <- liftServerIO $ C.newMVar ("This is not a message." :: String)
+
+    remote $ \newmsg -> do
+      message <- remoteMsg
+      liftIO $ do oldmsg <- C.takeMVar message
+                  C.putMVar message newmsg
+                  return oldmsg
+    runClient $ return()
+
   indexList listExamples (map TL.pack . map exname )
 
-  addMessageFlows [("exec", wstateless serveOutputRest)]
-
+  addMessageFlows [("exec", wstateless serveOutputRest)
+                  ,("compile", wstateless compileServ)]
   runNavigation "try" . transientNav $ do
-    example <- page $ do
+    example <- page $   do
           Examples exampleList <- liftIO $ atomically (readDBRef examples)
                                   `onNothing` initExamples
           wraw $ do
@@ -91,59 +107,89 @@ main= do
 
 
 
+
     if example== "noedit" then return () else do
-     page $ do
-      extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
-      (name',r)<- (wform  $
-                   (,) <$> executeEmbed (strip example ++ ".html")
-                       ++> "Please rename if you do major changes ->"
+     page  $  do
+--      requires [JScriptFile jqueryScript [ "$(document).ready(function(){$(\"form\").submit(function(event) {alert(\"hi\");return copyContent()})})"]]
+
+      do
+       extext <- if example /= "none" then liftIO $ TIO.readFile $ projects ++ example else return ""
+       mr<- (wform  $ Just <$> (
+                    (,) <$> "Please rename if you do major changes >"
                        ++> getString (Just example) <! [("placeholder","set name")]
                        <*> (submitButton "save & compile"
-                       <++ (a ! href "/" $ " home")
-                       **> getMultilineText extext <! [("style","visibility:hidden"),("id","hiddenTextarea")])
+                       <++ (a ! href "/" ! class_ "_noAutoRefresh" $ " home")
+                       **> getMultilineText extext <! [("style","visibility:hidden")
+                                                      ,("id","hiddenTextarea")])
                        <++ acedit
-                       <** br
-                       ++> submitButton "save & compile"
-                       <++ br) <! [("onsubmit","return copyContent()")]
+                       <> br)) <! [("onsubmit","return copyContent()")]
+                  <|> return Nothing
+
+--      wraw $ script ! type_ "text/javascript" $ "function code(e) {\n\
+--                            \e = e || window.event;\n\
+--                            \return(e.keyCode || e.which);\n\
+--                        \}\n\
+--                        \window.onload = function(){\n\
+--                            \document.onkeypress = function(e){\n\
+--                                \var key = code(e);\n\
+--                                \alert (key);\n\
+--                            \};\n\
+--                        \};"
+       case mr of
+         Nothing -> stopAt $ executeEmbed (strip example ++ ".html")
+
+         Just (name',r) -> do
+           let name= strip name'
+           r <- compileIt name' $ T.unpack r
+           case r of
+            Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
+            Right (r,out,err) ->
+              case r of
+                  True -> do
+                   let html= name ++ ".html"
+                   when (example /= name) $ wraw $ do
+--                      script $ "var elem=document.getElementById(\"exec\");\
+--                               \elem.parentNode.removeChild(elem);"
+                      executeEmbed html
+                   stop
+
+                  False -> stopAt $ do
+--                     script $ "var elem=document.getElementById(\"exec\");\
+--                               \elem.parentNode.removeChild(elem);"
+
+                     errorEmbed err
 
 
 
+
+--jqueryScript= getConfig "cjqueryScript" "//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"
+
+strip name'=
+  let rname= reverse name'
+  in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
+
+
+
+compileServ= do
+    name' <- wparam "name"
+    text <- wparam "text"
+    disp $  compileIt name' text
+   <?>  "Left \"parameter error\""
+
+compileIt :: String -> String ->View Html IO (Either String(Bool,String,String))
+compileIt name' r= do
       let name= strip name'
           hsfile = name ++ ".hs"
-          code= filter (/='\r') $ T.unpack r
+          code= filter (/= '\r')  r
           des= extractDes code
-
       liftIO $ writeFile  (projects ++ hsfile) code
       let edited= Example (name ++ ".hs") des Local
       liftIO $ atomically $ do
         Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
         writeDBRef examples . Examples . L.nub $ edited:exampleList
-
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/app/.cabal/bin/hastec" [hsfile,"--output-html"] ""
---      r <- liftIO . shell $ inDirectory projects $ genericRun "/home/user/.cabal/bin/hastec" [hsfile,"--output-html"] ""
       hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
-      r <- liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
-      case r of
-        Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
-        Right (r,out,err) ->
-          case r of
-              True -> do
-               let html= name ++ ".html"
-               when (example /= name) $ wraw $ do
-                  script $ "var elem=document.getElementById('exec');\
-                           \elem.parentNode.removeChild(elem);"
-                  executeEmbed html
-               stop
-
-              False -> stopAt $ do
-                 script $ "var elem=document.getElementById('exec');\
-                           \elem.parentNode.removeChild(elem);"
-
-                 errorEmbed err
-
-      <++ (p $ a ! href "/" $ "home")
-
+      liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
 
 serveOutputRest= do
     mfile <- getPath []
@@ -185,12 +231,19 @@ executeEmbed name=
   a ! href (fromString $ "/exec/"++ name ) $ " execute full page"
 
   iframe ! At.id "exec"
-         ! At.style "position:relative;left:0%;top:10px;width:100%;height:100%"
+         ! At.style "position:relative;left:0%;top:10px;width:100%;height:90%"
          ! src (fromString $ "/exec/"++ name)
          $ mempty
 
 
 errorEmbed err=
+  div ! At.style "position:fixed;left:50%;top:0%;width:50%;height:100%" $ do
+  button ! At.id "hide" ! onclick "var el= document.getElementById('exec');\
+                     \var st= el.style.visibility;\
+                     \el.style.visibility= st=='hidden'? 'visible':'hidden' ;\
+                     \document.getElementById('editor').style.width=st=='hidden'?'50%':'100%';"
+         $ "hide/show"
+
   div    ! At.id "exec"
          ! At.style "position:fixed;left:50%;top:10%;width:50%;height:100%"
          $  pre $ fromStr err
@@ -199,9 +252,6 @@ extractDes code=unlines $ map (drop 3) . takeWhile ("--" `L.isPrefixOf`) $ lines
 
 stopAt= notValid
 
-strip name'=
-  let rname= reverse name'
-  in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
 handle :: Example -> View Html IO String
 handle e= autoRefresh $ firstLine e `wcallback`  const (showExcerpt e)
@@ -358,6 +408,7 @@ acedit = [shamlet|
  <style type="text/css" media="screen">
     #editor {
     width: 50%;
+    height:89%
     }
 
 
@@ -370,9 +421,8 @@ acedit = [shamlet|
     var editor = ace.edit("editor");
     // editor.setTheme("ace/theme/monokai");
     editor.getSession().setMode("ace/mode/haskell");
-    editor.getSession().on('change', heightUpdateFunction);
-    heightUpdateFunction();
-
+    //editor.getSession().on('change', heightUpdateFunction);
+    //heightUpdateFunction();
     function heightUpdateFunction() {
 
         // http://stackoverflow.com/questions/11584061/

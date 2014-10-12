@@ -23,9 +23,10 @@ questions=  center <<< do -- PerchM monad
    do
       (n,s) <- (,) <$> p << "Who are you? "
                    ++> getString Nothing <++ br 
-                   <*> getString Nothing  
+                   <*> getString Nothing <++ br
+                   <** submitButton "ok" `fire` OnClick
       
-      flag <- getRadio[radiob "work?",radiob "study?"] <++ br
+      flag <- br ++> getRadio[radiob "work?",radiob "study?"] <++ br
 
       r<- case flag of
          "work?" -> Left  <$> b << "do you enjoy your work? "
