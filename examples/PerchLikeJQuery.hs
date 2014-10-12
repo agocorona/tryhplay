@@ -1,3 +1,6 @@
+-- Example of the new Perch forElems primitive that perform JQuery-like modifications
+-- of the HTML-DOM.
+
 import Haste.Perch
 import Haste
 import Haste.Foreign

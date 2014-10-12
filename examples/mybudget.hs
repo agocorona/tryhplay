@@ -1,3 +1,5 @@
+-- A personal budget application example
+
 {-# LANGUAGE  DeriveDataTypeable #-}
 
 import Haste.HPlay.View
