@@ -1,5 +1,4 @@
 language: haskell
-before_install: cabal install monadloc-pp
 deploy:
   provider: heroku 
   buildpack: https://github.com/agocorona/heroku-buildpack-haste.git
