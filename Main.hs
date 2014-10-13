@@ -43,12 +43,13 @@ type Url = String
 
 data Source = Local | Git Url deriving (Read,Show)
 
-data Example= Example{exname, desc :: String, source:: Source} deriving (Read,Show,Typeable)
+data Example= Example{exname, desc :: String, source:: Source, original :: Bool} deriving (Read,Show,Typeable)
 
 instance Eq Example where
-  Example n _ _ == Example n' _ _ = n == n'
+  Example n _ _ _ == Example n' _ _ _= n == n'
 
-data Examples= Examples [Example] deriving (Read,Show,Typeable)
+
+data Examples= Examples [Example]  deriving (Read,Show,Typeable)
 instance Indexable Examples where key = const "examples"
 instance Serializable Examples where
   serialize = B.pack . show
@@ -61,7 +62,7 @@ examples= getDBRef "examples"
 initExamples= do
   ss <- getDirectoryContents projects
   let sources = filter (".hs" `L.isSuffixOf`) ss
-  exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s (extractDes t) Local) ) sources
+  exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s (extractDes t) Local True) ) sources
   return $ Examples exs
 
 
@@ -177,19 +178,29 @@ compileServ= do
    <?>  "Left \"parameter error\""
 
 compileIt :: String -> String ->View Html IO (Either String(Bool,String,String))
-compileIt name' r= do
+compileIt name' code'= do
       let name= strip name'
           hsfile = name ++ ".hs"
-          code= filter (/= '\r')  r
+          code= filter (/= '\r')  code'
           des= extractDes code
-      liftIO $ writeFile  (projects ++ hsfile) code
-      let edited= Example (name ++ ".hs") des Local
-      liftIO $ atomically $ do
-        Examples exampleList <- readDBRef examples
+
+      Examples exampleList <- liftIO $ atomically $  readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
-        writeDBRef examples . Examples . L.nub $ edited:exampleList
-      hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
-      liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
+
+      let continue= do
+           liftIO $ writeFile  (projects ++ hsfile) code
+           let edited= Example (name ++ ".hs") des Local False
+           liftIO $ atomically $ writeDBRef examples . Examples . L.nub $ edited:exampleList
+           hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
+           liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
+
+
+      let mr = filter ( (hsfile ==) . exname) exampleList
+      case mr of
+         [f] -> if original f then compileIt (name++"-copy") code else continue
+         _ -> continue
+
+
 
 serveOutputRest= do
     mfile <- getPath []
@@ -374,7 +385,7 @@ deletef e  = liftIO $ do
    liftIO $ atomically $ do
      Examples exampleList <- readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
-     writeDBRef examples . Examples $ L.delete (Example fil undefined Local) exampleList
+     writeDBRef examples . Examples $ L.delete (Example fil undefined Local False) exampleList
    case Main.source e of
      Git _ -> removeDirectoryRecursive  $ projects ++ fil
      _     -> removeFile $ projects ++ fil
@@ -387,7 +398,7 @@ fromGit _ = ask $ do
     git <- liftIO $ findExecutable "git" `onNothing` error "git not found"
     r <- liftIO . shell $ inDirectory projects $ genericRun git ["clone", url] ""
     let urln= map (\c -> if c== '\\' then  '/' else c) url
-    let edited = Example (reverse . takeWhile (/='/')$ reverse urln) url (Git url)
+    let edited = Example (reverse . takeWhile (/='/')$ reverse urln) url (Git url) False
     case r of
         Left errs ->   pre << errs ++> empty
         Right (r,out,err) ->
