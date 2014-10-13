@@ -23,3 +23,4 @@ executable tryplayground
                        bytestring,bytestring-show, blaze-html, shellmate, shakespeare, mtl
   -- hs-source-dirs:
   default-language:    Haskell2010
+  ghc-options:  -threaded -rtsopts
