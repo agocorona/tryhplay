@@ -68,7 +68,7 @@ edit=  do
             let entries'= tail entries 
             liftIO $ setEntries  entries'
             let num'= num -1
-            at "regnumber"  $ wraw $ b (num') <> lb " registers"
+            at "regnumber" Insert  $ wraw $ b (num') <> lb " registers"
         
 
 newEntry= do
@@ -150,7 +150,7 @@ getDate (day, month, year)=
                                                     then Nothing else Just $ b "wrong"))
                 <*> inputInt (Just year)   ! length_ "4" ! size "4"
                 <** inputSubmit "Ok" `fire` OnClick
-                <++ br 
+                <++ br <> br <> br
 
 detailByFilter fil  = do
     regs' <- getEntries
@@ -213,12 +213,12 @@ detail  registers= wraw $ do
 -- preview spenses 
 preview= do
     changed <-  h3 "Preview" 
-            ++> h4 "Recalculate the budget accoring with priorities and present a chart graph"
-            ++> lb "Income"   ++> cell Income  <++ br 
-            <|> lb "Travel" ++> cell Travel <++ br
-            <|> lb "Food"   ++> cell Food <++ br 
-            <|> lb "Entertainment" ++>  cell Entertain <++ br
-            <|> lb "Other"   ++> cell Other <++ br 
+            ++> h4 "Recalculate the budget according with priorities and present a chart graph"
+            ++> lb "Income"   ++> cell Income 2000  <++ br 
+            <|> lb "Travel" ++> cell Travel 400 <++ br
+            <|> lb "Food"   ++> cell Food 300 <++ br 
+            <|> lb "Entertainment" ++>  cell Entertain 300 <++ br
+            <|> lb "Other"   ++> cell Other 100 <++ br 
                 
     t <- get $ boxCell "Travel";    f <- get $ boxCell "Food"
     e <- get $ boxCell "Entertain"; o <- get $ boxCell "Other"
@@ -242,9 +242,9 @@ preview= do
       else
         wraw $ b "No graphics since some quantity is negative"
     where
-    cell :: EntryType -> Widget EntryType
-    cell t= do
-            mk (boxCell (show t) :: Cell Double) Nothing  `fire` OnKeyUp 
+    cell :: EntryType -> Double -> Widget EntryType
+    cell t v= do
+            mk (boxCell (show t) :: Cell Double) (Just v)  `fire` OnKeyUp 
             return t
 
 -- from 

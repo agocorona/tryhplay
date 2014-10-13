@@ -184,7 +184,7 @@ compileIt name' code'= do
           code= filter (/= '\r')  code'
           des= extractDes code
 
-      Examples exampleList <- liftIO $ atomically $  readDBRef examples
+      Examples exampleList <- liftIO $ atomically $ readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
 
       let continue= do
