@@ -1,3 +1,14 @@
+-- The browser side part of tryplayground coded as a single page hplayground app.
+--
+-- tryplayground is a MFlow application that run in the server side:
+--
+--     http://mflowdemo.herokuapp.com
+--
+-- The app generates the HTML in the server.
+-- 
+-- This example run a very similar  code in the browser using haste+perch+hplaygrund
+-- it call a web service made in MFlow that compiles and send the result
+
 import Haste.HPlay.View
 import Haste hiding (onEvent)
 import Haste.Prim
@@ -27,9 +38,9 @@ strip name'=
   in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
 
-result = unsafePerformIO $ newIORef def
+result = unsafePerformIO $ newIORef def :: IORef String
 
-trade' :: a -> IO a
+trade' :: String -> IO String
 trade' str= do
    runApp (mkConfig "ws://localhost:24601" 24601) $ do
      trade <- remote $ \x -> return x
@@ -39,7 +50,7 @@ trade' str= do
         liftIO $ writeIORef result r
    readIORef result
    
-main= do
+main2= do  --test websockets
  -- body <- getBody
  -- (flip build) body $ input ! id "button" ! atr "type" "button" ! atr "value" "enter"
 
@@ -66,7 +77,7 @@ main= do
 
  
 
-main2= runBody $ do
+main= runBody $ do
     (name,text) <- (,)
         <$> controls
         <*> acedit

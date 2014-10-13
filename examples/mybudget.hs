@@ -35,18 +35,17 @@ lb text= span !  class_ "label1" $ text
 
 main= do
   addHeader $ nelem "style"   
-           `child` ".label1: {background-color:yellow;float: left;width: 30%;}"
+           `child` ".label1 {float: left;width: 20%;}"
   addHeader googleGraph
 
   runBody $ do
-    wraw $ nelem "style"   
-           `child` ".label1: {text-color:red;float: left;width: 30%;}"
 
-    wraw $ h1  "Personal Budget"  <> hr
+    wraw $ h1  "Personal Budget"
   
     r <-wbutton Edit "Edit" <|>
         wbutton Detail "View Entries" <|> 
         wbutton Prev "Preview expenses" 
+        <++ hr
         
     case r of
         Edit -> edit
@@ -58,7 +57,7 @@ main= do
 edit=  do
   entries <- getEntries
   let num = length entries :: Int
-  wraw $ div ! id "regnumber" $ b num  <> lb " registers"
+  wraw $ div ! id "regnumber" $ b num  <> lb " Registers created:"
   
   r <-  wbutton True "new Entry" <|> wbutton False "Remove Last entry"
   case r of
@@ -69,7 +68,7 @@ edit=  do
             let entries'= tail entries 
             liftIO $ setEntries  entries'
             let num'= num -1
-            at "regnumber" Insert $ wraw $ b (num') <> lb " registers"
+            at "regnumber"  $ wraw $ b (num') <> lb " registers"
         
 
 newEntry= do
@@ -84,7 +83,7 @@ newEntry= do
   --let size= atr "size"
 
   
-  (day, month,year) <- getDate (day,month,year)
+  (day, month,year) <- lb "Enter Date:" ++> getDate (day,month,year)
   
   typer <- getRadio(
                [\n -> lb "Travel "++> setRadio  Travel  n  `fire` OnClick <++ br
@@ -143,8 +142,7 @@ viewEntries= do
    detailByFilter filter  
 
 getDate (day, month, year)= 
-         (,,)   <$> lb "dd/mm/yyyy" ++>
-                    inputInt (Just day)    ! length_ "2" ! size "2"
+         (,,)   <$> inputInt (Just day)    ! length_ "2" ! size "2"
                         `validate` (\d -> return (if d> 1 && d <31 
                                                     then Nothing else Just $ b "wrong"))
                 <*> inputInt (Just month)  ! length_ "2" ! size "2"
@@ -168,13 +166,16 @@ detailByFilter fil  = do
         other=  total Other
         income= total Income
         
-    typer <-    wlink Income << lb " Income: " <++ b income
-            <|> wlink Travel << lb " Travel: " <++ b  travel
-            <|> wlink Food   << lb " Food: " <++ b  food
-            <|> wlink Entertain  << lb " Entertainment" <++ b  enter
-            <|> wlink Other  << lb "Other: " <++ b  other
+        fs=     fromStr
+        
+    typer <-    lb <<< wlink Income <<  fs " Income: " <++ b income 
+            <|> lb <<< wlink Travel <<  fs " Travel: " <++ b  travel
+            <|> lb <<< wlink Food   <<  fs " Food: " <++ b  food 
+            <|> lb <<< wlink Entertain  << fs " Entertain" <++ b  enter 
+            <|> lb <<< wlink Other  <<  fs "Other: " <++ b  other 
             <|> return AllEntries
-            <++ do hr 
+            <++ do br
+                   br
                    lb "Balance: " 
                    b (income - travel - food - enter - other)
             <** drawIt (("Type", "Spent")
@@ -189,22 +190,21 @@ detailByFilter fil  = do
 
 detail  registers= wraw $ do
     h3 "Al registers selected:"
-    let st10= style "margin-left: 1O%" 
-    let st30= style "margin-left: 3O%" 
-    let st50= style "margin-left: 5O%"
-    let st70= style "margin-left: 7O%" 
 
-
-    span ! st10 $ b "Date"
-    span ! st30 $ b "Description"
-    span ! st70 $ b "Amount"
+    div $ do
+      lb $ b "Date"
+      lb $ b "Description"
+      lb $ b "Type"
+      lb $ b "Amount"
+      br
 
     let formatEntry (Entry day month year desc amount typer)= 
          div $ do
-          span ! st10 $ show day++"-"++show month++"-"++show year
-          span ! st30 $ typer
-          span ! st50 $ desc
-          span ! st70 $ amount
+          lb $ show day++"-"++show month++"-"++show year
+          lb $ typer
+          lb $ desc
+          lb $ amount
+          br
 
     mconcat [formatEntry entry | entry <- registers]
     
