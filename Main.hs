@@ -140,25 +140,19 @@ main= do
          Nothing -> stopAt $ executeEmbed (strip example ++ ".html")
 
          Just (name',r) -> do
-           let name= strip name'
-           r <- compileIt name' $ T.unpack r
+           name <-  newName name'
+           r <- compileIt name $ T.unpack r
            case r of
             Left errs -> fromStr ("*******Failure: not found hastec: "++  errs) ++> empty
             Right (r,out,err) ->
               case r of
                   True -> do
                    let html= name ++ ".html"
-                   when (example /= name) $ wraw $ do
---                      script $ "var elem=document.getElementById(\"exec\");\
---                               \elem.parentNode.removeChild(elem);"
-                      executeEmbed html
+--                   when (example /= name) $
+                   wraw $ executeEmbed html
                    stop
 
-                  False -> stopAt $ do
---                     script $ "var elem=document.getElementById(\"exec\");\
---                               \elem.parentNode.removeChild(elem);"
-
-                     errorEmbed err
+                  False -> stopAt $ errorEmbed err
 
 
 
@@ -169,6 +163,16 @@ strip name'=
   let rname= reverse name'
   in  if "sh." `L.isPrefixOf` rname then reverse $ drop 3 rname else name'
 
+
+newName name'= do
+      let name= strip name'
+          hsfile = name ++ ".hs"
+      Examples exampleList <- liftIO $ atomically $ readDBRef examples
+                      `onNothing` unsafeIOToSTM initExamples
+      let mr = filter ( (hsfile ==) . exname) exampleList
+      return $ case mr of
+         [f] -> if original f then  (name++"-copy")  else name
+         _   -> name
 
 
 compileServ= do
@@ -187,18 +191,12 @@ compileIt name' code'= do
       Examples exampleList <- liftIO $ atomically $ readDBRef examples
                       `onNothing` unsafeIOToSTM initExamples
 
-      let continue= do
-           liftIO $ writeFile  (projects ++ hsfile) code
-           let edited= Example (name ++ ".hs") des Local False
-           liftIO $ atomically $ writeDBRef examples . Examples . L.nub $ edited:exampleList
-           hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
-           liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
+      liftIO $ writeFile  (projects ++ hsfile) code
+      let edited= Example (name ++ ".hs") des Local False
+      liftIO $ atomically $ writeDBRef examples . Examples . L.nub $ edited:exampleList
+      hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
+      liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
 
-
-      let mr = filter ( (hsfile ==) . exname) exampleList
-      case mr of
-         [f] -> if original f then compileIt (name++"-copy") code else continue
-         _ -> continue
 
 
 

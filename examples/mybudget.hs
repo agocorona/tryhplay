@@ -150,8 +150,9 @@ getDate (day, month, year)=
                                                     then Nothing else Just $ b "wrong"))
                 <*> inputInt (Just year)   ! length_ "4" ! size "4"
                 <** inputSubmit "Ok" `fire` OnClick
-                <++ br <> br <> br
+                <++ br
 
+detailByFilter :: (Entry -> Bool) -> Widget ()
 detailByFilter fil  = do
     regs' <- getEntries
     let regs = filter fil regs'
@@ -211,26 +212,37 @@ detail  registers= wraw $ do
   
         
 -- preview spenses 
+
+
+
 preview= do
+    initial@(t,f,e,o,i) <- getSData <|> return (50,50,50,1850,2000) 
+    
     changed <-  h3 "Preview" 
             ++> h4 "Recalculate the budget according with priorities and present a chart graph"
-            ++> lb "Income"   ++> cell Income 2000  <++ br 
-            <|> lb "Travel" ++> cell Travel 400 <++ br
-            <|> lb "Food"   ++> cell Food 300 <++ br 
-            <|> lb "Entertainment" ++>  cell Entertain 300 <++ br
-            <|> lb "Other"   ++> cell Other 100 <++ br 
-                
-    t <- get $ boxCell "Travel";    f <- get $ boxCell "Food"
-    e <- get $ boxCell "Entertain"; o <- get $ boxCell "Other"
-    i <- get $ boxCell "Income" :: Widget Double
-   
+            ++> lb "Income"   ++> cell Income i  <++ br 
+            <|> lb "Travel" ++> cell Travel t <++ br
+            <|> lb "Food"   ++> cell Food f <++ br 
+            <|> lb "Entertainment" ++>  cell Entertain e <++ br
+            <|> lb "Other"   ++> cell Other o <++ br 
+            <|> return AllEntries
+
+    (t,f,e,o,i) <- if changed== AllEntries then return initial else do            
+                        t <- get $ boxCell "Travel";    f <- get $ boxCell "Food"
+                        e <- get $ boxCell "Entertain"; o <- get $ boxCell "Other"
+                        i <- get $ boxCell "Income" :: Widget Double
+                        return (t,f,e,o,i)
+
+    setSData (t,f,e,o,i)
+
     (i,f,o,t,e) <-case changed of
         Travel    -> let e= i - f - o - t in do boxCell "Entertain" .= e ; return  (i,f,o,t,e) 
         Food      -> let e= i - f - o - t in do boxCell "Entertain" .= e ; return  (i,f,o,t,e) 
         Entertain -> let o= i - f - e - t in do boxCell "Other" .= o ; return  (i,f,o,t,e) 
         Other     -> let e= i - f - o - t in do boxCell "Entertain" .= e ; return  (i,f,o,t,e) 
         Income    -> let e= i - f - o - t in do boxCell "Entertain" .= e ; return  (i,f,o,t,e) 
-    
+        AllEntries ->return  (i,f,o,t,e) 
+
     if( t >= 0 && f >= 0 && e >= 0 && o >= 0 && i >= 0) 
       then
        drawIt(("Type", "Spent")
