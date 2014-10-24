@@ -34,8 +34,8 @@ import qualified Data.Text as T
 import qualified Haste.App.Concurrent as H
 import qualified Control.Concurrent as C
 
-import Debug.Trace
-(!>)= flip trace
+--import Debug.Trace
+--(!>)= flip trace
 
 
 projects= "./examples/"
@@ -73,7 +73,7 @@ application  pending = do
    where
    loop conn= do
      msg <- WS.receiveData conn :: IO T.Text
-     print msg
+
      case msg of
        "hello" ->   WS.sendTextData conn ("hello back" :: T.Text)
        _ -> do
@@ -358,7 +358,7 @@ comp e = do
 
          let html=  exname e ++ "/"++ dir ++ "/"++  SB.unpack file ++ ".html"
          liftIO $ atomically $ do
-           Examples exampleList <- readDBRef examples !> "delete"
+           Examples exampleList <- readDBRef examples -- !> "delete"
                       `onNothing` unsafeIOToSTM initExamples
 
 
