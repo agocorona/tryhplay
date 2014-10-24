@@ -11,12 +11,15 @@ var Haste = {};
 */
 
 function T(f) {
-    this.f = new F(f);
+    this.f = f;
 }
 
 function F(f) {
     this.f = f;
 }
+
+// Special object used for blackholing.
+var __blackhole = {};
 
 /* Apply
    Applies the function f to the arguments args. If the application is under-
@@ -68,22 +71,25 @@ function A(f, args) {
 */
 function E(t) {
     if(t instanceof T) {
-        if(t.f instanceof F) {
-            return t.f = t.f.f();
-        } else {
-            return t.f;
+        if(t.f != __blackhole) {
+            var f = t.f;
+            t.f = __blackhole;
+            t.x = f();
         }
+        return t.x;
     } else {
         return t;
     }
 }
 
 /* Bounce
-   Bonuce on a trampoline for as long as we get a function back.
+   Bounce on a trampoline for as long as we get a function back.
 */
 function B(f) {
     while(f instanceof F) {
-        f = f.f();
+        var fun = f.f;
+        f = __blackhole;
+        f = fun();
     }
     return f;
 }
@@ -117,12 +123,16 @@ function quotRemI(a, b) {
 // 32 bit integer multiplication, with correct overflow behavior
 // note that |0 or >>>0 needs to be applied to the result, for int and word
 // respectively.
-function imul(a, b) {
-  // ignore high a * high a as the result will always be truncated
-  var lows = (a & 0xffff) * (b & 0xffff); // low a * low b
-  var aB = (a & 0xffff) * (b & 0xffff0000); // low a * high b
-  var bA = (a & 0xffff0000) * (b & 0xffff); // low b * high a
-  return lows + aB + bA; // sum will not exceed 52 bits, so it's safe
+if(Math.imul) {
+    var imul = Math.imul;
+} else {
+    var imul = function(a, b) {
+        // ignore high a * high a as the result will always be truncated
+        var lows = (a & 0xffff) * (b & 0xffff); // low a * low b
+        var aB = (a & 0xffff) * (b & 0xffff0000); // low a * high b
+        var bA = (a & 0xffff0000) * (b & 0xffff); // low b * high a
+        return lows + aB + bA; // sum will not exceed 52 bits, so it's safe
+    }
 }
 
 function addC(a, b) {
@@ -254,11 +264,11 @@ function mMV(mv, f) {
 
 function localeEncoding() {
     var le = newByteArr(5);
-    le['b']['i8'] = 'U'.charCodeAt(0);
-    le['b']['i8'] = 'T'.charCodeAt(0);
-    le['b']['i8'] = 'F'.charCodeAt(0);
-    le['b']['i8'] = '-'.charCodeAt(0);
-    le['b']['i8'] = '8'.charCodeAt(0);
+    le['v']['i8'][0] = 'U'.charCodeAt(0);
+    le['v']['i8'][1] = 'T'.charCodeAt(0);
+    le['v']['i8'][2] = 'F'.charCodeAt(0);
+    le['v']['i8'][3] = '-'.charCodeAt(0);
+    le['v']['i8'][4] = '8'.charCodeAt(0);
     return le;
 }
 
@@ -488,6 +498,24 @@ function jsFind(elem) {
         return [1,[0,e]];
     }
     return [0];
+}
+
+function jsQuerySelectorAll(elem, query) {
+  var els = [0],
+      len, nl, i;
+
+  if (!elem || typeof elem.querySelectorAll !== 'function') {
+    return els;
+  }
+
+  nl = elem.querySelectorAll(query);
+  len = nl.length;
+
+  for (i=len-1; i >= 0; --i) {
+    els = [1, [0, nl[i]], els];
+  }
+
+  return els;
 }
 
 function jsCreateElem(tag) {

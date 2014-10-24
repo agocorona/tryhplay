@@ -11,14 +11,14 @@ import Haste.Perch
 addInt :: Int -> Int -> IO Int
 addInt x y = return $ x + y
 
-addIntAsync :: Int -> Int -> Opaque (Int -> IO ()) -> IO ()
-addIntAsync x y callback = setTimeout 0 add
-	where add = addInt x y >>= fromOpaque callback
+--addIntAsync :: Int -> Int -> Opaque (Int -> IO ()) -> IO ()
+--addIntAsync x y callback = setTimeout 0 add
+--	where add = addInt x y >>= fromOpaque callback
 
 main = do
     body <- getBody
     export "addInt" addInt
-    export "addIntAsync" addIntAsync
+--    export "addIntAsync" addIntAsync
     r <- evalFormula "Haste.addInt(2, 2)"
     build (pre r) body
 

@@ -1,4 +1,5 @@
 -- A personal budget application example
+-- It uses Google Graphics to draw a chart
 
 {-# LANGUAGE  DeriveDataTypeable #-}
 
@@ -279,10 +280,10 @@ googleGraph= do
      
 drawIt dat= do
     wraw $ div ! id "piechart" ! style "width: 900px; height: 500px;" $ do
-         lb "Please connect to Internet to download the "
+         i "Please connect to Internet to download the "
          a ! href "https://google-developers.appspot.com/chart/interactive/docs/gallery/piechart"
            $ "Pie Chart graphics" 
-         lb "from Google"
+         i "from Google"
            
     wraw $ liftIO $ drawIt' dat
     where

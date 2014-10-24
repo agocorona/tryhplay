@@ -11,12 +11,15 @@ var Haste = {};
 */
 
 function T(f) {
-    this.f = new F(f);
+    this.f = f;
 }
 
 function F(f) {
     this.f = f;
 }
+
+// Special object used for blackholing.
+var __blackhole = {};
 
 /* Apply
    Applies the function f to the arguments args. If the application is under-
@@ -68,34 +71,38 @@ function A(f, args) {
 */
 function E(t) {
     if(t instanceof T) {
-        if(t.f instanceof F) {
-            return t.f = t.f.f();
-        } else {
-            return t.f;
+        if(t.f != __blackhole) {
+            var f = t.f;
+            t.f = __blackhole;
+            t.x = f();
         }
+        return t.x;
     } else {
         return t;
     }
 }
 
 /* Bounce
-   Bonuce on a trampoline for as long as we get a function back.
+   Bounce on a trampoline for as long as we get a function back.
 */
 function B(f) {
     while(f instanceof F) {
-        f = f.f();
+        var fun = f.f;
+        f = __blackhole;
+        f = fun();
     }
     return f;
 }
 
-// Export Haste, A and E. Haste because we need to preserve exports, A and E
-// because they're handy for Haste.Foreign.
+// Export Haste, A, B and E. Haste because we need to preserve exports, A, B
+// and E because they're handy for Haste.Foreign.
 if(!window) {
     var window = {};
 }
 window['Haste'] = Haste;
 window['A'] = A;
 window['E'] = E;
+window['B'] = B;
 
 
 /* Throw an error.
@@ -116,12 +123,16 @@ function quotRemI(a, b) {
 // 32 bit integer multiplication, with correct overflow behavior
 // note that |0 or >>>0 needs to be applied to the result, for int and word
 // respectively.
-function imul(a, b) {
-  // ignore high a * high a as the result will always be truncated
-  var lows = (a & 0xffff) * (b & 0xffff); // low a * low b
-  var aB = (a & 0xffff) * (b & 0xffff0000); // low a * high b
-  var bA = (a & 0xffff0000) * (b & 0xffff); // low b * high a
-  return lows + aB + bA; // sum will not exceed 52 bits, so it's safe
+if(Math.imul) {
+    var imul = Math.imul;
+} else {
+    var imul = function(a, b) {
+        // ignore high a * high a as the result will always be truncated
+        var lows = (a & 0xffff) * (b & 0xffff); // low a * low b
+        var aB = (a & 0xffff) * (b & 0xffff0000); // low a * high b
+        var bA = (a & 0xffff0000) * (b & 0xffff); // low b * high a
+        return lows + aB + bA; // sum will not exceed 52 bits, so it's safe
+    }
 }
 
 function addC(a, b) {
@@ -199,7 +210,7 @@ function unCStr(str) {return unAppCStr(str, [0]);}
 function unFoldrCStr(str, f, z) {
     var acc = z;
     for(var i = str.length-1; i >= 0; --i) {
-        acc = A(f, [[0, str.charCodeAt(i)], acc]);
+        acc = B(A(f, [[0, str.charCodeAt(i)], acc]));
     }
     return acc;
 }
@@ -246,18 +257,18 @@ function wMV(mv, val) {
 
 // atomicModifyMutVar
 function mMV(mv, f) {
-    var x = A(f, [mv.x]);
+    var x = B(A(f, [mv.x]));
     mv.x = x[1];
     return x[2];
 }
 
 function localeEncoding() {
     var le = newByteArr(5);
-    le['b']['i8'] = 'U'.charCodeAt(0);
-    le['b']['i8'] = 'T'.charCodeAt(0);
-    le['b']['i8'] = 'F'.charCodeAt(0);
-    le['b']['i8'] = '-'.charCodeAt(0);
-    le['b']['i8'] = '8'.charCodeAt(0);
+    le['v']['i8'][0] = 'U'.charCodeAt(0);
+    le['v']['i8'][1] = 'T'.charCodeAt(0);
+    le['v']['i8'][2] = 'F'.charCodeAt(0);
+    le['v']['i8'][3] = '-'.charCodeAt(0);
+    le['v']['i8'][4] = '8'.charCodeAt(0);
     return le;
 }
 
@@ -289,9 +300,9 @@ function strOrd(a, b) {
 
 function jsCatch(act, handler) {
     try {
-        return A(act,[0]);
+        return B(A(act,[0]));
     } catch(e) {
-        return A(handler,[e, 0]);
+        return B(A(handler,[e, 0]));
     }
 }
 
@@ -389,7 +400,7 @@ function jsSetCB(elem, evt, cb) {
     if(evt == 'change' && elem.type.toLowerCase() == 'text') {
         setCB(elem, 'keyup', function(k) {
             if(k == '\n'.charCodeAt(0)) {
-                A(cb,[[0,k.keyCode],0]);
+                B(A(cb,[[0,k.keyCode],0]));
             }
         });
     }
@@ -404,7 +415,7 @@ function jsSetCB(elem, evt, cb) {
             var mpos = jsGetMouseCoords(x);
             var mx = [0,mpos[0]];
             var my = [0,mpos[1]];
-            A(cb,[[0,x.button],[0,mx,my],0]);
+            B(A(cb,[[0,x.button],[0,mx,my],0]));
         };
         break;
     case 'mousemove':
@@ -413,16 +424,16 @@ function jsSetCB(elem, evt, cb) {
             var mpos = jsGetMouseCoords(x);
             var mx = [0,mpos[0]];
             var my = [0,mpos[1]];
-            A(cb,[[0,mx,my],0]);
+            B(A(cb,[[0,mx,my],0]));
         };
         break;
     case 'keypress':
     case 'keyup':
     case 'keydown':
-        fun = function(x) {A(cb,[[0,x.keyCode],0]);};
+        fun = function(x) {B(A(cb,[[0,x.keyCode],0]));};
         break;        
     default:
-        fun = function() {A(cb,[0]);};
+        fun = function() {B(A(cb,[0]));};
         break;
     }
     return setCB(elem, evt, fun);
@@ -440,7 +451,7 @@ function setCB(elem, evt, cb) {
 }
 
 function jsSetTimeout(msecs, cb) {
-    window.setTimeout(function() {A(cb,[0]);}, msecs);
+    window.setTimeout(function() {B(A(cb,[0]));}, msecs);
 }
 
 function jsGet(elem, prop) {
@@ -487,6 +498,24 @@ function jsFind(elem) {
         return [1,[0,e]];
     }
     return [0];
+}
+
+function jsQuerySelectorAll(elem, query) {
+  var els = [0],
+      len, nl, i;
+
+  if (!elem || typeof elem.querySelectorAll !== 'function') {
+    return els;
+  }
+
+  nl = elem.querySelectorAll(query);
+  len = nl.length;
+
+  for (i=len-1; i >= 0; --i) {
+    els = [1, [0, nl[i]], els];
+  }
+
+  return els;
 }
 
 function jsCreateElem(tag) {
@@ -663,9 +692,9 @@ function ajaxReq(method, url, async, postdata, cb) {
     xhr.onreadystatechange = function() {
         if(xhr.readyState == 4) {
             if(xhr.status == 200) {
-                A(cb,[[1,[0,xhr.responseText]],0]);
+                B(A(cb,[[1,[0,xhr.responseText]],0]));
             } else {
-                A(cb,[[0],0]); // Nothing
+                B(A(cb,[[0],0])); // Nothing
             }
         }
     }
@@ -2152,5 +2181,5 @@ function jsMkStdin() {
     );
 }
 
-var _0=false,_1=new T(function(){return [0,"(function(e){return e.parentNode;})"];}),_2=function(_3){var _4=B(A(_3,[_])),_5=_4;return E(_5);},_6=function(_7){return new F(function(){return _2(function(_){var _=0;return new F(function(){return eval(E(_7)[1]);});});});},_8=new T(function(){return B(_6(_1));}),_9=[0,0],_a=[0],_b=function(_c,_){return _a;},_d=function(_){return _a;},_e=[0,_d,_b],_f=2,_g=[1],_h=[0],_i=[0,_h,_9,_f,_e,_0,_g],_j=function(_){var _=0,_k=newMVar(),_l=_k,_=putMVar(_l,_i);return [0,_l];},_m=new T(function(){return B(_2(_j));}),_n=function(_o,_p,_){var _q=E(_m)[1],_r=takeMVar(_q),_s=_r,_t=B(A(_o,[_s,_])),_u=_t,_v=E(_u),_w=E(_v[1]),_x=_w[1],_y=_w[2],_=putMVar(_q,new T(function(){var _z=E(_v[2]);return [0,_z[1],_z[2],_z[3],_z[4],_0,_z[6]];}));if(!E(E(_s)[5])){var _A=B(A(_x,[_p,_])),_B=_A;return _y;}else{var _C=B(A(_8,[E(E(_p)[1]),_])),_D=_C,_E=B(A(_x,[[0,_D],_])),_F=_E;return _y;}},_G=function(_H,_I,_){var _J=jsCreateTextNode(toJSStr(E(_H))),_K=_J,_L=jsAppendChild(_K,E(_I)[1]);return [0,_K];},_M=new T(function(){return B(unCStr("hello world"));}),_N=function(_O,_){var _P=B(_G(_M,_O,_)),_Q=_P;return _O;},_R=[0,_N,_a],_S=function(_T,_){return [0,_R,_T];},_U=new T(function(){return [0,"(function(){return document.body;})"];}),_V=new T(function(){return B(_6(_U));}),_W=function(_){var _X=B(A(_V,[_])),_Y=_X;return new F(function(){return _n(_S,[0,_Y],_);});},_Z=function(_){return new F(function(){return _W(_);});};
-var hasteMain = function() {B(A(_Z, [0]));};window.onload = hasteMain;</script></head><body></body></html>
+var _0=function(_1,_2,_){var _3=jsCreateTextNode(toJSStr(E(_1))),_4=_3,_5=jsAppendChild(_4,E(_2)[1]);return [0,_4];},_6=[0],_7=[0,0],_8=false,_9=2,_a=[1],_b=[0],_c=function(_d,_){return _d;},_e=[0,_c,_6],_f=function(_g,_){return [0,_e,_g];},_h=new T(function(){return B(unCStr("noid"));}),_i=function(_j,_k,_){return [0,_e,_k];},_l=[0,_i,_h],_m=[1,_l,_b],_n=[0,_f,_m],_o=[0,_b,_7,_9,_n,_8,_a],_p=function(_){var _=0,_q=newMVar(),_r=_q,_=putMVar(_r,_o);return [0,_r];},_s=function(_t){var _u=B(A(_t,[_])),_v=_u;return E(_v);},_w=new T(function(){return B(_s(_p));}),_x=new T(function(){return B(unCStr("hello world"));}),_y=new T(function(){return [0,"(function(){return document.body;})"];}),_z=function(_A){return new F(function(){return _s(function(_){var _=0;return new F(function(){return eval(E(_A)[1]);});});});},_B=new T(function(){return B(_z(_y));}),_C=function(_){var _D=B(A(_B,[_])),_E=_D,_F=E(_w)[1],_G=takeMVar(_F),_H=_G,_=putMVar(_F,_H),_I=B(_0(_x,[0,_E],_)),_J=_I;return _6;},_K=function(_){return new F(function(){return _C(_);});};
+var hasteMain = function() {B(A(_K, [0]));};window.onload = hasteMain;</script></head><body></body></html>

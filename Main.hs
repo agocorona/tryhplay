@@ -29,7 +29,8 @@ import Text.Hamlet
 import Data.Maybe
 import Data.Char
 
-import Haste.App hiding (fromString)
+import Network.WebSockets as WS
+import qualified Data.Text as T
 import qualified Haste.App.Concurrent as H
 import qualified Control.Concurrent as C
 
@@ -65,17 +66,27 @@ initExamples= do
   exs <- mapM (\s -> readFile (projects ++ s) >>= \t -> return (Example s (extractDes t) Local True) ) sources
   return $ Examples exs
 
-
+application ::  WS.ServerApp
+application  pending = do
+   conn <- WS.acceptRequest pending
+   loop conn
+   where
+   loop conn= do
+     msg <- WS.receiveData conn :: IO T.Text
+     print msg
+     case msg of
+       "hello" ->   WS.sendTextData conn ("hello back" :: T.Text)
+       _ -> do
+             exs <- liftIO $ atomically (readDBRef examples)
+                                  `onNothing` initExamples
+             WS.sendTextData conn  $ T.pack $ show exs
+     loop conn
 main= do
-  C.forkOS $ runApp (mkConfig "ws://localhost:24601" 24601) $ do
-    remoteMsg <- liftServerIO $ C.newMVar ("This is not a message." :: String)
+  C.forkOS $ do
 
-    remote $ \newmsg -> do
-      message <- remoteMsg
-      liftIO $ do oldmsg <- C.takeMVar message
-                  C.putMVar message newmsg
-                  return oldmsg
-    runClient $ return()
+     WS.runServer "0.0.0.0" 24601 $ application
+
+
 
   indexList listExamples (map TL.pack . map exname )
 
