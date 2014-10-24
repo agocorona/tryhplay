@@ -1,3 +1,11 @@
+-- Hplayground WebSockets have de-inversion of control. it uses wsAsk for syncronous
+-- request-responses. It will incorporate asynchronous 'onReceive' too, too
+--
+-- This example call the server with two options one will answer "hello back".
+-- The other will send the list of examples and will display them using Perch.
+--
+-- The server source is at: https://github.com/agocorona/tryhplay/blob/master/Main.hs
+
 import Haste.HPlay.View
 import Haste.HPlay.WebSockets
 import Control.Monad.IO.Class
