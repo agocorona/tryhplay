@@ -182,7 +182,7 @@ newName name'= do
                       `onNothing` unsafeIOToSTM initExamples
       let mr = filter ( (hsfile ==) . exname) exampleList
       return $ case mr of
-         [f] -> if original f then  (name++"-copy")  else name
+         [f] -> if original f then  (name++"-copy") else name
          _   -> name
 
 
@@ -207,8 +207,6 @@ compileIt name' code'= do
       liftIO $ atomically $ writeDBRef examples . Examples . L.nub $ edited:exampleList
       hastec <- liftIO $ findExecutable "hastec" `onNothing` error "hastec not foound"
       liftIO . shell $ inDirectory projects $ genericRun hastec [hsfile,"--output-html"] ""
-
-
 
 
 serveOutputRest= do
