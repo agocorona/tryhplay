@@ -190,7 +190,7 @@ compileServ= do
     name' <- wparam "name"
     text <- wparam "text"
     disp $  compileIt name' text
-   <?>  "Left \"parameter error\""
+   <?>  "Left \"parameter  error\""
 
 compileIt :: String -> String ->View Html IO (Either String(Bool,String,String))
 compileIt name' code'= do
