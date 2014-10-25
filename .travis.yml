@@ -1,8 +1,7 @@
 language: haskell
 before_install: cabal install cpphs
 deploy:
-  strategy: anvil 
   provider: heroku 
-  buildpack: https://github.com/agocorona/heroku-buildpack-haste
+  buildpack: http://github.com/agocorona/heroku-buildpack-haste
   api_key: "f0a47850-7f86-4f59-872d-8c9c85153d71"
   app: tryplayg
