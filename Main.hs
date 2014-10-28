@@ -187,7 +187,7 @@ newName name'= do
 
 
 compileServ= do
-    name' <- wparam "name"
+    name' <- wparam  "name"
     text <- wparam "text"
     disp $  compileIt name' text
    <?>  "Left \"parameter  error\""
