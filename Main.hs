@@ -3,7 +3,6 @@ module Main where
 
 import MFlow.Wai.Blaze.Html.All
 import MFlow (mimeTable)
-import Haste.Compiler
 import Data.Default
 import Prelude hiding (id,div,head,span)
 import qualified Data.List as L
@@ -31,7 +30,6 @@ import Data.Char
 
 import Network.WebSockets as WS
 import qualified Data.Text as T
-import qualified Haste.App.Concurrent as H
 import qualified Control.Concurrent as C
 
 --import Debug.Trace
