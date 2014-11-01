@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+
+set -eu -o pipefail
+source "${HALCYON_TOP_DIR}/halcyon.sh"
+
+
+function slug_post_build_hook () {
+	local tag source_dir slug_dir
+	expect_args tag source_dir slug_dir -- "$@"
+
+	local haste_compiler sandbox_extra_libs
+	haste_compiler='haste-compiler-0.4.3'
+	sandbox_extra_libs='libbz2-dev'
+
+	local data_dir constraints_file hook_file
+	data_dir="${source_dir}/.halcyon-magic/slug-post-build-hook-data"
+	constraints_file="${data_dir}/${haste_compiler}.cabal.config"
+	hook_file="${data_dir}/${haste_compiler}.slug-post-build-hook"
+
+	deploy  --install-dir="${slug_dir}"                  \
+		--recursive                                  \
+		--constraints-file="${constraints_file}"     \
+		--sandbox-extra-libs="${sandbox_extra_libs}" \
+		--slug-post-build-hook="${hook_file}"        \
+		"${haste_compiler}" || return 1
+}
+
+
+slug_post_build_hook "$@"

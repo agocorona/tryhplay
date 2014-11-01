@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+
+set -eu -o pipefail
+source "${HALCYON_TOP_DIR}/halcyon.sh"
+
+
+function slug_post_build_hook () {
+	expect_vars HALCYON_DIR
+	expect_existing "${HALCYON_DIR}/ghc/.halcyon-tag" "${HALCYON_DIR}/cabal/.halcyon-tag"
+
+	if [ -d '/app/.cabal' ] && ! [ -f '/app/.cabal/.halcyon-mark' ]; then
+		die 'Expected no foreign /app/.cabal'
+	fi
+	if [ -d '/app/.haste' ] && ! [ -f '/app/.haste/.halcyon-mark' ]; then
+		die 'Expected no foreign /app/.haste'
+	fi
+	rm -rf '/app/.cabal' '/app/.haste' || die
+
+	local tag source_dir slug_dir
+	expect_args tag source_dir slug_dir -- "$@"
+
+	local hplayground
+	hplayground='hplayground-0.1.2.1'
+
+	log 'Preparing to bootstrap Haste'
+
+	# NOTE: Bootstrapping Haste requires haste-compiler to be already installed in /
+
+	cp -R "${slug_dir}/." '/' |& quote || die
+
+	# NOTE: Haste must be bootstrapped in /app, as it hard-codes paths to HOME/.haste
+
+	export HOME='/app'
+
+	# NOTE: Haste does not support Cabal sandboxes.
+
+	mkdir -p '/app/.cabal' || die
+	touch '/app/.cabal/.halcyon-mark' || die
+	grep -v 'require-sandbox:' "${HALCYON_DIR}/cabal/.halcyon-cabal.config" >'/app/.cabal/config' || die
+
+	# NOTE: Bootstrapping Haste requires Cabal to have already generated HOME/.cabal/setup-exe-cache
+	# https://github.com/valderman/haste-compiler/issues/224#issuecomment-55021767
+
+	if ! [ -f '/app/.cabal/setup-exe-cache' ]; then
+		local dummy_sandbox
+		dummy_sandbox="$( get_tmp_dir 'halcyon-dummy-sandbox' )" || die
+
+		mkdir -p "${dummy_sandbox}" || die
+		cabal_do "${dummy_sandbox}" sandbox init --sandbox '.' |& quote || die
+		cabal_do "${dummy_sandbox}" install 'acme-dont' |& quote || die
+		rm -rf "${dummy_sandbox}" || die
+	fi
+	expect_existing '/app/.cabal/setup-exe-cache'
+
+	log 'Bootstrapping Haste'
+
+	if ! ( cd '/app' && haste-boot |& quote ); then
+		die 'Failed to bootstrap Haste'
+	fi
+
+	# TODO: hplayground should be installed separately.
+
+	log "Installing ${hplayground}"
+
+	if ! ( cd '/app' && haste-inst install "${hplayground}" |& quote ); then
+		die "Failed to install ${hplayground}"
+	fi
+
+	# NOTE: Haste installs the Clojure compiler next to hastec.  Files copied into slug_dir/app
+	# will be present in HOME on a dyno.
+
+	mv "${HALCYON_DIR}/slug/bin/compiler.jar" "${slug_dir}${HALCYON_DIR}/slug/bin/compiler.jar" || die
+	mv '/app/.haste' "${slug_dir}/app/.haste" || die
+
+	local bootstrapped_size
+	bootstrapped_size=$( size_tree "${slug_dir}/app/.haste" ) || die
+
+	log "Haste bootstrapped, ${bootstrapped_size}"
+
+	# NOTE: Haste requires both GHC and Cabal to be available at runtime.
+
+	log 'Copying GHC and Cabal layers'
+
+	copy_dir_over "${HALCYON_DIR}/ghc" "${slug_dir}${HALCYON_DIR}/ghc" || die
+	copy_dir_over "${HALCYON_DIR}/cabal" "${slug_dir}${HALCYON_DIR}/cabal" || die
+}
+
+
+slug_post_build_hook "$@"

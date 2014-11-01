@@ -1,0 +1,8 @@
+{
+  "name": "TryHPlay",
+  "website": "http://tryplayg.herokuapp.com",
+  "repository": "https://github.com/agocorona/tryhplay",
+  "env": {
+    "BUILDPACK_URL": "https://github.com/mietek/haskell-on-heroku.git"
+  }
+}
