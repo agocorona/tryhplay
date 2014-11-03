@@ -30,7 +30,7 @@ slug_post_build_hook () {
 	hook_file="${data_dir}/haste-compiler-${haste_compiler_version}.slug-post-build-hook"
 	work_dir=$( get_tmp_dir 'halcyon-slug' ) || die
 
-	if ! deploy                                          \
+	if ! halcyon deploy                                  \
 		--install-dir="${slug_dir}"                  \
 		--constraints-file="${constraints_file}"     \
 		--sandbox-extra-libs="${sandbox_extra_libs}" \
