@@ -6,85 +6,19 @@ source "${HALCYON_TOP_DIR}/src.sh"
 
 
 slug_post_build_hook () {
-	expect_vars HOME
-	expect_existing "${HOME}"
-
 	local tag source_dir slug_dir
 	expect_args tag source_dir slug_dir -- "$@"
 
-	local haste_compiler_version hplayground_version sandbox_extra_libs
-	haste_compiler_version='0.4.3'
-	hplayground_version='0.1.2.1'
-	sandbox_extra_libs='libbz2-dev'
-
-	log 'Preparing slug'
-
-	log_indent_pad 'haste-compiler version:' "${haste_compiler_version}"
-	log_indent_pad 'hplayground version:' "${hplayground_version}"
-	log
-	log
-
-	local data_dir constraints_file hook_file work_dir
+	local data_dir hook_file
 	data_dir="${source_dir}/.halcyon-magic/slug-post-build-hook-data"
-	constraints_file="${data_dir}/haste-compiler-${haste_compiler_version}.cabal.config"
-	hook_file="${data_dir}/haste-compiler-${haste_compiler_version}.slug-post-build-hook"
-	work_dir=$( get_tmp_dir 'halcyon-slug' ) || die
+	hook_file="${data_dir}/haste-compiler-0.4.3.slug-post-build-hook"
 
-	if ! halcyon deploy                                  \
-		--install-dir="${slug_dir}"                  \
-		--constraints-file="${constraints_file}"     \
-		--sandbox-extra-libs="${sandbox_extra_libs}" \
-		--slug-post-build-hook="${hook_file}"        \
-		"haste-compiler-${haste_compiler_version}"
-	then
-		return 1
-	fi
-
-	log
-	log
-	log 'Installing hplayground'
-
-	cp -R "${slug_dir}/." '/' |& quote || die
-
-	if [[ -d "${HOME}/.cabal" && ! -f "${HOME}/.cabal/.halcyon-mark" ]]; then
-		log_error 'Unexpected existing ~/.cabal'
-		log
-		log 'To continue, remove ~/.cabal'
-		die
-	fi
-	rm -rf "${HOME}/.cabal" || die
-
-	# NOTE: Haste does not support Cabal sandboxes.
-
-	mkdir -p "${HOME}/.cabal" "${work_dir}" || die
-	touch "${HOME}/.cabal/.halcyon-mark" || die
-	grep -v 'require-sandbox:' "${HALCYON_DIR}/cabal/.halcyon-cabal.config" >"${HOME}/.cabal/config" || die
-
-	# NOTE: Using haste requires Cabal to have already generated
-	# HOME/.cabal/setup-exe-cache
-	# https://github.com/valderman/haste-compiler/issues/257
-
-	if [[ ! -f "${HOME}/.cabal/setup-exe-cache" ]]; then
-		local dummy_sandbox
-		dummy_sandbox="$( get_tmp_dir 'halcyon-dummy-sandbox' )" || die
-
-		mkdir -p "${dummy_sandbox}" || die
-		cabal_do "${dummy_sandbox}" sandbox init --sandbox '.' |& quote || die
-		cabal_do "${dummy_sandbox}" install 'acme-dont' |& quote || die
-		rm -rf "${dummy_sandbox}" || die
-	fi
-	expect_existing "${HOME}/.cabal/setup-exe-cache"
-
-	log 'Compiling hplayground'
-
-	if ! ( cd "${work_dir}" && haste-inst install "hplayground-${hplayground_version}" |& quote ); then
-		die 'Failed to compile hplayground'
-	fi
-
-	# NOTE: Installing hplayground clobbers HOME/.cabal
-
-	rm -rf "${HOME}/.cabal" "${work_dir}" || die
-	link_cabal_config || die
+	halcyon deploy                                \
+		--install-dir="${slug_dir}"           \
+		--constraints-dir="${data_dir}"       \
+		--sandbox-extra-libs="libbz2-dev"     \
+		--slug-post-build-hook="${hook_file}" \
+		"haste-compiler-0.4.3" || return 1
 }
 
 

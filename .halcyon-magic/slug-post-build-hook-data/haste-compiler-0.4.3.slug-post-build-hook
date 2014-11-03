@@ -7,7 +7,6 @@ source "${HALCYON_TOP_DIR}/src.sh"
 
 slug_post_build_hook () {
 	expect_vars HALCYON_DIR
-	expect_existing "${HALCYON_DIR}/ghc/.halcyon-tag" "${HALCYON_DIR}/cabal/.halcyon-tag"
 
 	local tag source_dir slug_dir
 	expect_args tag source_dir slug_dir -- "$@"
@@ -17,9 +16,10 @@ slug_post_build_hook () {
 		return 1
 	fi
 
-	log 'Installing Haste'
+	local work_dir
+	work_dir=$( get_tmp_dir 'halcyon-slug' ) || die
 
-	# NOTE: Bootstrapping Haste requires haste-compiler to be already installed in /
+	log 'Installing Haste'
 
 	cp -R "${slug_dir}/." '/' |& quote || die
 
@@ -41,14 +41,13 @@ slug_post_build_hook () {
 
 	export HOME='/app'
 
-	# NOTE: Haste does not support Cabal sandboxes.
+	# NOTE: Haste needs a custom Cabal config, as it does not support Cabal sandboxes.
 
 	mkdir -p '/app/.cabal' || die
 	touch '/app/.cabal/.halcyon-mark' || die
 	grep -v 'require-sandbox:' "${HALCYON_DIR}/cabal/.halcyon-cabal.config" >'/app/.cabal/config' || die
 
-	# NOTE: Using haste requires Cabal to have already generated
-	# HOME/.cabal/setup-exe-cache
+	# NOTE: Haste needs Cabal to generate HOME/.cabal/setup-exe-cache.
 	# https://github.com/valderman/haste-compiler/issues/257
 
 	if [[ ! -f '/app/.cabal/setup-exe-cache' ]]; then
@@ -68,20 +67,30 @@ slug_post_build_hook () {
 		die 'Failed to bootstrap Haste'
 	fi
 
-	# NOTE: Haste installs the Clojure compiler next to hastec.  Files copied into
-	# slug_dir/app will be present in HOME on a dyno.
+	local bootstrapped_size
+	bootstrapped_size=$( size_tree "/app/.haste" ) || die
+
+	log "Haste bootstrapped, ${bootstrapped_size}"
+
+	# TODO: hplayground should be installed separately, but Haste makes it difficult.
+
+	log 'Installing hplayground'
+
+	mkdir -p "${work_dir}" || die
+
+	if ! ( cd "${work_dir}" && haste-inst install 'hplayground' |& quote ); then
+		die 'Failed to install hplayground'
+	fi
+
+	rm -rf "${work_dir}" || die
+
+	# NOTE: Files copied into slug_dir/app will be present in HOME on a dyno.
+	# NOTE: Haste installs the Clojure compiler next to hastec.
 
 	mv "${HALCYON_DIR}/slug/bin/compiler.jar" "${slug_dir}${HALCYON_DIR}/slug/bin/compiler.jar" || die
 	mv '/app/.haste' "${slug_dir}/app/.haste" || die
 
-	local bootstrapped_size
-	bootstrapped_size=$( size_tree "${slug_dir}/app/.haste" ) || die
-
-	log "Haste bootstrapped, ${bootstrapped_size}"
-
-	# NOTE: Bootstrapping Haste clobbers /app/.cabal
-
-	rm -rf '/app/.cabal' || die
+	rm -rf '/app/.cabal' "${work_dir}" || die
 	link_cabal_config || die
 }
 
