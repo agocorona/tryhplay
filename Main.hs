@@ -92,7 +92,7 @@ application  pending = do
 --runWebSocketsNavigation :: String -> FlowM Html (Workflow IO) () -> IO ()
 runWebSocketsNavigation n f= do
     unless (null n) $ setNoScript n
-    addMessageFlows [(n, runFlow f)]
+    addMessageFlows  [(n, runFlow f)]
     porti <- getPortW
 
 
