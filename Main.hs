@@ -75,7 +75,7 @@ initExamples= do
 
 application ::  WS.ServerApp
 application  pending = do
-   conn <- WS.acceptRequest pending
+   conn <- WS.acceptRequest  pending
    loop conn
    where
    loop conn= do
