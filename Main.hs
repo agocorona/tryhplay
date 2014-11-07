@@ -32,6 +32,15 @@ import Network.WebSockets as WS
 import qualified Data.Text as T
 import qualified Control.Concurrent as C
 
+
+--for websockets, to be moved to MFlow
+
+import Network.Wai.Handler.WebSockets
+import MFlow.Wai
+import Network.Wai
+import Network.Wai.Handler.Warp as Wrp
+import System.Environment
+
 --import Debug.Trace
 --(!>)= flip trace
 
@@ -79,18 +88,37 @@ application  pending = do
                                   `onNothing` initExamples
              WS.sendTextData conn  $ T.pack $ show exs
      loop conn
+
+--runWebSocketsNavigation :: String -> FlowM Html (Workflow IO) () -> IO ()
+runWebSocketsNavigation n f= do
+    unless (null n) $ setNoScript n
+    addMessageFlows[(n, runFlow f)]
+    porti <- getPortW
+
+
+    wait $ Wrp.run porti  ws
+    where
+    ws :: Application
+    ws= websocketsOr defaultConnectionOptions application waiMessageFlow
+
+getPortW= do
+    args <- getArgs
+    port <- case args of
+           port:xs -> return port
+           _  -> do
+               env <- getEnvironment
+               return $ fromMaybe "80" $ lookup "PORT" env
+    return $ if and $ map isNumber port then fromIntegral $ read port
+                                          else 80
+
 main= do
-  C.forkOS $ do
-
-     WS.runServer "0.0.0.0" 24601 $ application
-
-
+--  C.forkOS $ WS.runServer "0.0.0.0" 80 $ application
 
   indexList listExamples (map TL.pack . map exname )
 
   addMessageFlows [("exec", wstateless serveOutputRest)
                   ,("compile", wstateless compileServ)]
-  runNavigation "try" . transientNav $ do
+  runWebSocketsNavigation "try" . transientNav $ do
     example <- page $   do
           Examples exampleList <- liftIO $ atomically (readDBRef examples)
                                   `onNothing` initExamples

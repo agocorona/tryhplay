@@ -1,5 +1,7 @@
 -- Hplayground WebSockets have de-inversion of control. it uses wsAsk for syncronous
--- request-responses. It will incorporate asynchronous 'onReceive' too, too
+-- request-responses. 
+-- wsAsk can can handle asynchronous traffic too since it catches every received 
+-- message, not only the next message
 --
 -- This example call the server with two options one will answer "hello back".
 -- The other will send the list of examples and will display them using Perch.
@@ -15,9 +17,11 @@ import Haste.JSON hiding ((!))
 import Prelude hiding (div)
 import Data.List as L
 import Data.Monoid
+import Haste.Foreign
 
 main= runBody $ do
-    ws <- wsOpen "ws://localhost:24601"
+    addr <- getMyHost
+    ws <- wsOpen $ "ws://"++addr -- ++":80"
     req <- wbutton "hello" "send hello" <|> wbutton "other" "get files" <++ br
     case req of
      "hello" -> do
@@ -58,5 +62,5 @@ data Source = Local | Git URL deriving (Read,Show)
 data Example= Example{exname, desc :: String, source:: Source, original :: Bool}
      deriving (Read,Show)
 
-
-
+getMyHost  :: Widget String
+getMyHost= liftIO $ ffi $ toJSString "(function(){return  window.location.hostname;})"
