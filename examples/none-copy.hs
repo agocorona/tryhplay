@@ -1,14 +1,17 @@
-import Haste
-import Haste.Perch
-import Prelude hiding (div)
+import Haste.HPlay.View
 
-main :: IO ()
-main = do
-  body <- getBody
-  flip build  body $ do
-    div $ do
-      addEvent this OnClick $ \_ _ -> alert "hello, world!"
-      div $ do
-        p "hello"
-        p ! atr "style" "color:red" $ "world"
-  return ()
+main= runBody shtmlTest
+
+shtmlTest :: Widget ()
+shtmlTest = do
+   r <- p "HTML editor"  ++> textArea "" `fire` OnKeyUp
+   wprint  "Result:" 
+   wraw $ rawHtml r
+   
+shtml= do
+  id <- genNewId
+  wraw $ this `innerHtml` s
+
+rawHtml s= Perch $ \e -> innertHtml e s >> return e
+
+innerHtml e s= ffi "(function(e,s){e.innerHtml=s})"

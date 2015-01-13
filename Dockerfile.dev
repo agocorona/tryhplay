@@ -1,0 +1,88 @@
+
+#from https://registry.hub.docker.com/u/rogaha/docker-desktop/dockerfile
+FROM agocorona/tryhplay
+MAINTAINER Alberto G. Corona "agocorona@gmail.com"
+RUN apt-get update -y
+RUN apt-get upgrade -y
+# Set the env variable DEBIAN_FRONTEND to noninteractive
+ENV DEBIAN_FRONTEND noninteractive
+# Installing the environment required: xserver, xdm, flux box, roc-filer and ssh
+RUN apt-get install -y xpra rox-filer openssh-server pwgen xserver-xephyr xdm fluxbox xvfb sudo
+# Configuring xdm to allow connections from any IP address and ssh to allow X11 Forwarding.
+RUN sed -i 's/DisplayManager.requestPort/!DisplayManager.requestPort/g' /etc/X11/xdm/xdm-config
+RUN sed -i '/#any host/c\*' /etc/X11/xdm/Xaccess
+RUN ln -s /usr/bin/Xorg /usr/bin/X
+RUN echo X11Forwarding yes >> /etc/ssh/ssh_config
+# Fix PAM login issue with sshd
+RUN sed -i 's/session required pam_loginuid.so/#session required pam_loginuid.so/g' /etc/pam.d/sshd
+# Upstart and DBus have issues inside docker. We work around in order to install firefox.
+RUN dpkg-divert --local --rename --add /sbin/initctl && ln -sf /bin/true /sbin/initctl
+# Installing fuse package (libreoffice-java dependency) and it's going to try to create
+# a fuse device without success, due the container permissions. || : help us to ignore it.
+# Then we are going to delete the postinst fuse file and try to install it again!
+# Thanks Jerome for helping me with this workaround solution! :)
+# Now we are able to install the libreoffice-java package
+RUN apt-get -y install fuse || :
+RUN rm -rf /var/lib/dpkg/info/fuse.postinst
+RUN apt-get -y install fuse
+
+RUN apt-get install -y leksah firefox xterm
+# Set locale (fix the locale warnings)
+RUN localedef -v -c -i en_US -f UTF-8 en_US.UTF-8 || :
+# Copy the files into the container
+ADD . /src
+EXPOSE 22
+# Start xdm and ssh services.
+COPY * /src/
+CMD ["/bin/bash", "/src/startup.sh"]
+
+
+
+#!/bin/bash
+
+# docker image to use
+DOCKER_IMAGE_NAME="pellepelster/mango-demo"
+
+# local name for the container
+DOCKER_CONTAINER_NAME=$DOCKER_IMAGE_NAME
+
+# check if container already present
+TMP=$(docker ps -a | grep ${DOCKER_CONTAINER_NAME})
+CONTAINER_FOUND=$?
+
+TMP=$(docker ps | grep ${DOCKER_CONTAINER_NAME})
+CONTAINER_RUNNING=$?
+
+if [ $CONTAINER_FOUND -eq 0 ]; then
+
+	echo -n "container '${DOCKER_CONTAINER_NAME}' found, "
+
+	if [ $CONTAINER_RUNNING -eq 0 ]; then
+		echo "already running"
+	else
+		echo -n "not running, starting..."
+		TMP=$(docker start ${DOCKER_CONTAINER_NAME})
+		echo "done"
+	fi
+
+else
+	echo -n "container '${DOCKER_CONTAINER_NAME}' not found, creating..."
+	TMP=$(docker run -d -P --name ${DOCKER_CONTAINER_NAME} ${DOCKER_IMAGE_NAME})
+	echo "done"
+fi
+
+#wait for container to come up
+sleep 2
+
+# find ssh port
+SSH_URL=$(docker port ${DOCKER_CONTAINER_NAME} 22)
+SSH_URL_REGEX="(.*):(.*)"
+
+SSH_INTERFACE=$(echo $SSH_URL | awk -F  ":" '/1/ {print $1}')
+SSH_PORT=$(echo $SSH_URL | awk -F  ":" '/1/ {print $2}')
+
+echo "ssh running at ${SSH_INTERFACE}:${SSH_PORT}"
+
+ssh -i ${SSH_KEY_FILE_PRIVATE} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -Y -X root@${SSH_INTERFACE} -p ${SSH_PORT} eclipse/eclipse -data workspace
+rm -f ${SSH_KEY_FILE_PRIVATE}
+
