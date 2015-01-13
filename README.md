@@ -3,7 +3,7 @@ Try HPlay
 
 Basic browser-based interface to the [Haste](http://haste-lang.org/) compiler, including [hplayground](https://github.com/agocorona/hplayground/).
 
-run locally with Docker
+Run locally with Docker
 -----------------------
 
     > docker run -i -t -p 80:80 agocorona/tryhplay  /bin/bash -c 'cd tryhplay ; ./dist/build/tryplayground/tryplayground
