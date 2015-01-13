@@ -15,4 +15,4 @@ RUN haste-inst install hplayground
 CMD ["/bin/bash"]
 
 
-docker run -i -t -p 8080:80 agocorona/tryhplay  /bin/bash -c 'cd tryhplay ; ./dist/build/tryplayground/tryplayground'
+docker run -i -t -p 80:80 agocorona/tryhplay  /bin/bash -c 'cd tryhplay ; ./dist/build/tryplayground/tryplayground'
