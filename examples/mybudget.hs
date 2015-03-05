@@ -144,10 +144,10 @@ viewEntries= do
 
 getDate (day, month, year)= 
          (,,)   <$> inputInt (Just day)    ! length_ "2" ! size "2"
-                        `validate` (\d -> return (if d> 1 && d <31 
+                        `validate` (\d -> return (if d >= 1 && d =<31 
                                                     then Nothing else Just $ b "wrong"))
                 <*> inputInt (Just month)  ! length_ "2" ! size "2"
-                        `validate` (\m -> return (if m>1 && m < 12 
+                        `validate` (\m -> return (if m >=1 && m <= 12 
                                                     then Nothing else Just $ b "wrong"))
                 <*> inputInt (Just year)   ! length_ "4" ! size "4"
                 <** inputSubmit "Ok" `fire` OnClick

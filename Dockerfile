@@ -13,6 +13,3 @@ ENV PATH /root/.cabal/bin:/opt/cabal/1.20/bin:/opt/ghc/7.8.3/bin:/opt/happy/1.19
 RUN haste-boot
 RUN haste-inst install hplayground
 CMD ["/bin/bash"]
-
-
-docker run -i -t -p 8080:80 agocorona/tryhplay  /bin/bash -c 'cd tryhplay ; ./dist/build/tryplayground/tryplayground'
