@@ -20,7 +20,7 @@ executable tryplayground
   -- other-modules:
   -- other-extensions:
   build-depends:       base,entropy <= 0.3.3, MFlow >= 0.4.5.9, data-default ,directory , TCache
-                     , text, wai, warp
+                     , text, wai,  wai-websockets, warp
                      ,  bytestring,bytestring-show, blaze-html
                      , shellmate, shakespeare, mtl,websockets
   -- hs-source-dirs:
