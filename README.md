@@ -1,7 +1,9 @@
 Try HPlay
 =========
 
-Basic browser-based interface to the [Haste](http://haste-lang.org/) compiler, including [hplayground](https://github.com/agocorona/hplayground/).
+Basic browser-based interface to the [Haste](http://haste-lang.org/) compiler, including
+[haste-perch](https://github.com/agocorona/haste-perch) and
+[hplayground](https://github.com/agocorona/hplayground/).
 
 Run locally with Docker
 -----------------------
