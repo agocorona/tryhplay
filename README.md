@@ -6,7 +6,7 @@ Basic browser-based interface to the [Haste](http://haste-lang.org/) compiler, i
 Run locally with Docker
 -----------------------
 
-    > docker run -i -t -p 80:80 agocorona/tryhplay  /bin/bash -c 'cd tryhplay ; ./dist/build/tryplayground/tryplayground'
+    > docker run -it -p 80:80 agocorona/tryhplay
 
 Installation
 ------------
