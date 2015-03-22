@@ -10,6 +10,14 @@ Run locally with Docker
 
     > docker run -it -p 80:80 agocorona/tryhplay
 
+it run the last version of tryhplay.
+
+if you have boot2docker do:
+
+    > boot2docker ip
+
+and put the resulting IP as the URL in the web browser, it will execute the examples and you can create new programs.
+
 Installation
 ------------
 see the Dockerfile and execute the steps manually in your computer
