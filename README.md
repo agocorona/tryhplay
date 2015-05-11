@@ -12,7 +12,10 @@ Run locally with Docker
 
 it run the last version of tryhplay.
 
-if you have boot2docker do:
+If you use docker with boot2docker, use it this way:
+
+
+alternatively, you have boot2docker do:
 
     > boot2docker ip
 
